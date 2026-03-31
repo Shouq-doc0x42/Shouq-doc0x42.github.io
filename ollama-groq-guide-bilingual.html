@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ollama & Groq API — Beginner's Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;500;600;700&family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #7a7f90;
+    --accent-green: #00d084;
+    --accent-blue: #4dabf7;
+    --accent-purple: #b197fc;
+    --accent-orange: #ffa94d;
+    --accent-red: #ff6b6b;
+    --code-bg: #0a0c11;
+    --tag-bg: rgba(0,208,132,0.1);
+    --tag-border: rgba(0,208,132,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.75;
+    transition: font-family 0.3s;
+  }
+  html[lang="en"] body { font-family: 'Sora', sans-serif; }
+  html[lang="ar"] body { font-family: 'Cairo', sans-serif; line-height: 2; }
+
+  /* RTL overrides */
+  html[lang="ar"] { direction: rtl; }
+  html[lang="ar"] .hero::before { right: auto; left: -120px; }
+  html[lang="ar"] .hero::after  { left: auto; right: -80px; }
+  html[lang="ar"] th { text-align: right; }
+  html[lang="ar"] .tip-card { border-left: none; border-right: 3px solid var(--accent-green); border-radius: 10px 0 0 10px; }
+  html[lang="ar"] .tip-card.blue   { border-right-color: var(--accent-blue);   border-left: none; }
+  html[lang="ar"] .tip-card.purple { border-right-color: var(--accent-purple); border-left: none; }
+  html[lang="ar"] .tip-card.orange { border-right-color: var(--accent-orange); border-left: none; }
+  html[lang="ar"] .compare-col.left  { border-right: 1px solid var(--border); border-left: none; }
+  html[lang="ar"] .compare-col.right { border-left: 1px solid var(--border); border-right: none; }
+  html[lang="ar"] .demo-input-row { flex-direction: row-reverse; }
+  html[lang="ar"] .demo-input { direction: rtl; text-align: right; }
+  html[lang="ar"] .demo-select { direction: rtl; }
+  html[lang="ar"] .response-box { direction: rtl; text-align: right; }
+  html[lang="ar"] .lang-btn { left: 24px; right: auto; }
+  html[lang="ar"] .hero-sub { max-width: 620px; }
+  html[lang="ar"] .section-title { letter-spacing: 0; }
+  html[lang="ar"] .toc-inner { flex-direction: row-reverse; }
+
+  /* ─── LANG BUTTON ─── */
+  .lang-btn {
+    position: fixed;
+    bottom: 28px;
+    right: 24px;
+    z-index: 999;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 50px;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    font-family: inherit;
+  }
+  .lang-btn:hover {
+    border-color: var(--accent-green);
+    box-shadow: 0 4px 32px rgba(0,208,132,0.15);
+    transform: translateY(-2px);
+  }
+  .lang-btn:active { transform: translateY(0); }
+  .lang-btn-flag {
+    font-size: 18px;
+    line-height: 1;
+  }
+  .lang-btn-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .lang-btn-text .current { color: var(--accent-green); font-size: 11px; }
+  .lang-btn-text .target  { color: var(--text); font-size: 13px; }
+  .lang-btn-arrow {
+    color: var(--muted);
+    font-size: 14px;
+    transition: transform 0.3s;
+  }
+  .lang-btn.switching .lang-btn-arrow { transform: rotate(360deg); }
+
+  /* page fade transition */
+  body { transition: opacity 0.25s ease; }
+  body.fading { opacity: 0; }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: linear-gradient(135deg, #0d0f14 0%, #111420 50%, #0d0f14 100%);
+    border-bottom: 1px solid var(--border2);
+    padding: 56px 48px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,208,132,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: -80px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(77,171,247,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--tag-bg); border: 1px solid var(--tag-border);
+    border-radius: 20px; padding: 5px 14px;
+    font-size: 12px; font-weight: 600; color: var(--accent-green);
+    margin-bottom: 24px;
+  }
+  html[lang="en"] .hero-badge { text-transform: uppercase; letter-spacing: 0.8px; }
+  .hero-badge::before { content: '●'; font-size: 8px; }
+  .hero h1 {
+    font-size: clamp(1.9rem, 4.5vw, 3.2rem);
+    font-weight: 700; line-height: 1.2;
+    margin-bottom: 16px;
+  }
+  html[lang="en"] .hero h1 { letter-spacing: -0.5px; line-height: 1.15; }
+  .hero h1 span.g { color: var(--accent-green); }
+  .hero h1 span.b { color: var(--accent-blue); }
+  .hero-sub { font-size: 16px; color: var(--muted); max-width: 580px; line-height: 1.75; margin-bottom: 32px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .hero-tag {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 12px;
+    font-size: 12px; color: var(--muted); font-weight: 500;
+  }
+
+  /* ─── TOC ─── */
+  .toc {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .toc-inner { display: inline-flex; gap: 0; }
+  .toc a {
+    display: inline-block; padding: 14px 18px;
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    text-decoration: none; border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  html[lang="ar"] .toc a { font-weight: 600; }
+  .toc a:hover { color: var(--text); border-bottom-color: var(--border2); }
+  .toc a.active { color: var(--accent-green); border-bottom-color: var(--accent-green); }
+
+  /* ─── LAYOUT ─── */
+  .wrapper { max-width: 960px; margin: 0 auto; padding: 48px 48px 100px; }
+
+  /* ─── SECTIONS ─── */
+  .section { margin-bottom: 72px; }
+  .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+  .section-num {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 600; color: var(--accent-green); flex-shrink: 0;
+  }
+  .section-title { font-size: 1.55rem; font-weight: 700; }
+  html[lang="en"] .section-title { letter-spacing: -0.3px; }
+  .section-title .dim { color: var(--muted); font-weight: 400; }
+
+  /* ─── CARDS ─── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px 28px; margin-bottom: 20px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+  html[lang="en"] .card-title { text-transform: uppercase; letter-spacing: 0.6px; }
+
+  /* ─── GRIDS ─── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 680px) { .two-col { grid-template-columns: 1fr; } }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 680px) { .three-col { grid-template-columns: 1fr; } }
+
+  /* ─── CODE BLOCK ─── */
+  .code-block {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin: 20px 0;
+    font-family: 'JetBrains Mono', monospace;
+    direction: ltr; text-align: left;
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02); direction: ltr;
+  }
+  .code-lang { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-family: 'JetBrains Mono', monospace; }
+  .code-dots { display: flex; gap: 6px; }
+  .code-dots span { width: 10px; height: 10px; border-radius: 50%; }
+  .code-dots .d1 { background: #ff5f57; }
+  .code-dots .d2 { background: #ffbd2e; }
+  .code-dots .d3 { background: #28c840; }
+  .code-body { padding: 20px 22px; font-size: 13px; line-height: 1.8; overflow-x: auto; direction: ltr; text-align: left; }
+  .code-body pre { white-space: pre; }
+  .code-label { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+
+  .kw  { color: #c792ea; } .fn  { color: #82aaff; } .str { color: #c3e88d; }
+  .cmt { color: #546e7a; font-style: italic; } .num { color: #f78c6c; }
+  .cls { color: #ffcb6b; } .cmd { color: var(--accent-green); }
+
+  /* ─── TERMINAL ─── */
+  .terminal {
+    background: #020408; border: 1px solid rgba(0,208,132,0.2);
+    border-radius: 12px; overflow: hidden; margin: 20px 0;
+    font-family: 'JetBrains Mono', monospace; direction: ltr; text-align: left;
+  }
+  .terminal-header {
+    padding: 10px 18px; border-bottom: 1px solid rgba(0,208,132,0.12);
+    background: rgba(0,208,132,0.04); font-size: 11px; color: var(--accent-green);
+    font-weight: 600; letter-spacing: 0.6px; display: flex; align-items: center; gap: 8px; direction: ltr;
+  }
+  .terminal-header::before { content: '◉'; font-size: 10px; }
+  .terminal-body { padding: 18px 22px; font-size: 13px; line-height: 1.8; direction: ltr; }
+  .term-prompt { color: var(--accent-green); }
+  .term-cmd    { color: #e8eaf0; }
+  .term-out    { color: #7a7f90; margin-top: 4px; }
+  .term-line   { margin-bottom: 6px; }
+
+  /* ─── CALLOUT ─── */
+  .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; font-size: 14px; display: flex; gap: 12px; align-items: flex-start; }
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+  .callout.info   { background: rgba(77,171,247,0.07);  border: 1px solid rgba(77,171,247,0.18);  }
+  .callout.tip    { background: rgba(0,208,132,0.07);   border: 1px solid rgba(0,208,132,0.18);   }
+  .callout.warn   { background: rgba(255,169,77,0.07);  border: 1px solid rgba(255,169,77,0.18);  }
+  .callout.danger { background: rgba(255,107,107,0.07); border: 1px solid rgba(255,107,107,0.18); }
+  .callout.info   .callout-icon { color: var(--accent-blue);   }
+  .callout.tip    .callout-icon { color: var(--accent-green);  }
+  .callout.warn   .callout-icon { color: var(--accent-orange); }
+  .callout.danger .callout-icon { color: var(--accent-red);    }
+
+  /* ─── FEATURE CARDS ─── */
+  .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; transition: border-color 0.2s; }
+  .feature-card:hover { border-color: var(--border2); }
+  .feature-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+  .feature-icon.green  { background: rgba(0,208,132,0.1); }
+  .feature-icon.blue   { background: rgba(77,171,247,0.1); }
+  .feature-icon.purple { background: rgba(177,151,252,0.1); }
+  .feature-icon.orange { background: rgba(255,169,77,0.1); }
+  .feature-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .feature-card p  { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* ─── BADGE ─── */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.green  { background: rgba(0,208,132,0.12);  color: var(--accent-green);  border: 1px solid rgba(0,208,132,0.25); }
+  .badge.blue   { background: rgba(77,171,247,0.12); color: var(--accent-blue);   border: 1px solid rgba(77,171,247,0.25); }
+  .badge.purple { background: rgba(177,151,252,0.12);color: var(--accent-purple); border: 1px solid rgba(177,151,252,0.25); }
+  .badge.orange { background: rgba(255,169,77,0.12); color: var(--accent-orange); border: 1px solid rgba(255,169,77,0.25); }
+
+  /* ─── TABLE ─── */
+  .table-wrap { overflow-x: auto; margin: 16px 0; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { background: var(--surface2); padding: 12px 18px; text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+  html[lang="ar"] th { text-align: right; }
+  td { padding: 12px 18px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.7; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ─── STEP LIST ─── */
+  .step-list { list-style: none; margin: 16px 0; }
+  .step-list li { display: flex; gap: 16px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .step-list li:last-child { border-bottom: none; }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--accent-green);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    font-weight: 600; color: var(--accent-green); flex-shrink: 0; margin-top: 4px;
+  }
+  .step-content strong { font-weight: 600; display: block; margin-bottom: 3px; }
+  .step-content p { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
+
+  /* ─── COMPARE STRIP ─── */
+  .compare-strip { display: grid; grid-template-columns: 1fr auto 1fr; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin: 20px 0; }
+  .compare-col { padding: 24px; }
+  .compare-col.left  { background: rgba(0,208,132,0.04);  border-right: 1px solid var(--border); }
+  .compare-col.right { background: rgba(77,171,247,0.04); }
+  .compare-mid { display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 13px; color: var(--muted); font-weight: 600; background: var(--surface2); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .compare-col h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .compare-col ul { list-style: none; }
+  .compare-col ul li { font-size: 13px; color: var(--muted); padding: 5px 0; display: flex; gap: 8px; align-items: flex-start; }
+  .compare-col ul li::before { content: '›'; color: var(--accent-green); font-weight: 700; flex-shrink: 0; }
+  .compare-col.right ul li::before { color: var(--accent-blue); }
+
+  /* ─── SCENARIO ─── */
+  .scenario-header { background: var(--surface2); border: 1px solid var(--border2); border-radius: 14px 14px 0 0; padding: 20px 24px; border-bottom: none; }
+  .scenario-body   { background: var(--surface); border: 1px solid var(--border2); border-top: none; border-radius: 0 0 14px 14px; padding: 24px; }
+
+  /* ─── DEMO WIDGET ─── */
+  .demo-widget { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; overflow: hidden; margin: 20px 0; }
+  .demo-title-bar { background: var(--surface2); padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .demo-title-bar::before { content: '⬡'; color: var(--accent-green); font-size: 16px; }
+  .demo-body { padding: 24px; }
+  .demo-input-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .demo-input {
+    flex: 1; background: var(--code-bg); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 11px 16px;
+    font-size: 14px; color: var(--text); outline: none; transition: border-color 0.2s;
+  }
+  html[lang="en"] .demo-input { font-family: 'Sora', sans-serif; }
+  html[lang="ar"] .demo-input { font-family: 'Cairo', sans-serif; }
+  .demo-input:focus { border-color: var(--accent-green); }
+  .demo-btn {
+    background: var(--accent-green); color: #020408;
+    border: none; border-radius: 8px; padding: 11px 22px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s; white-space: nowrap;
+  }
+  html[lang="en"] .demo-btn { font-family: 'Sora', sans-serif; }
+  html[lang="ar"] .demo-btn { font-family: 'Cairo', sans-serif; }
+  .demo-btn:hover { opacity: 0.85; }
+  .demo-btn:active { transform: scale(0.97); }
+  .demo-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .demo-select {
+    background: var(--code-bg); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 11px 14px;
+    font-size: 13px; color: var(--text); outline: none; cursor: pointer;
+  }
+  html[lang="en"] .demo-select { font-family: 'Sora', sans-serif; }
+  html[lang="ar"] .demo-select { font-family: 'Cairo', sans-serif; }
+  .response-box {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; min-height: 80px;
+    font-size: 13.5px; line-height: 1.8; color: var(--muted);
+    white-space: pre-wrap; transition: border-color 0.3s;
+  }
+  html[lang="en"] .response-box { font-family: 'JetBrains Mono', monospace; }
+  html[lang="ar"] .response-box { font-family: 'Cairo', sans-serif; font-size: 14px; }
+  .response-box.active { border-color: rgba(0,208,132,0.3); color: var(--text); }
+
+  /* ─── USE CASES ─── */
+  .usecase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; margin-top: 16px; }
+  .usecase-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: border-color 0.2s, transform 0.15s; }
+  .usecase-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .usecase-card .uc-icon { font-size: 24px; margin-bottom: 10px; }
+  .usecase-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .usecase-card p  { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* ─── TIP CARDS ─── */
+  .tip-card { background: var(--surface); border-left: 3px solid var(--accent-green); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 12px 0; font-size: 14px; }
+  .tip-card.blue   { border-left-color: var(--accent-blue);   }
+  .tip-card.purple { border-left-color: var(--accent-purple); }
+  .tip-card.orange { border-left-color: var(--accent-orange); }
+  .tip-card strong { display: block; margin-bottom: 4px; font-size: 13px; color: var(--muted); }
+  html[lang="en"] .tip-card strong { text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* ─── SUMMARY ─── */
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  @media(max-width:580px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; gap: 14px; align-items: flex-start; }
+  .summary-check { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; background: rgba(0,208,132,0.12); border: 1px solid rgba(0,208,132,0.3); display: flex; align-items: center; justify-content: center; color: var(--accent-green); font-size: 13px; margin-top: 2px; }
+  .summary-item h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .summary-item p  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* ─── NEXT STEPS ─── */
+  .next-steps { background: linear-gradient(135deg, rgba(0,208,132,0.06), rgba(77,171,247,0.04)); border: 1px solid rgba(0,208,132,0.18); border-radius: 16px; padding: 32px 36px; }
+  .next-steps h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; color: var(--accent-green); }
+  .next-steps ol { list-style: none; counter-reset: ns; }
+  .next-steps ol li { counter-increment: ns; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; display: flex; gap: 14px; align-items: baseline; }
+  .next-steps ol li:last-child { border-bottom: none; }
+  .next-steps ol li::before { content: counter(ns, decimal-leading-zero); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent-green); flex-shrink: 0; direction: ltr; }
+
+  /* ─── MISC ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  p { margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; color: var(--text); }
+  .mt16 { margin-top: 16px; }
+  .mt24 { margin-top: 24px; }
+  .mb0  { margin-bottom: 0 !important; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; color: var(--accent-green); direction: ltr; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- ═══ LANGUAGE TOGGLE BUTTON ═══ -->
+<button class="lang-btn" id="langBtn" onclick="toggleLang()" title="Switch Language / تغيير اللغة">
+  <span class="lang-btn-flag" id="btnFlag">🇸🇦</span>
+  <span class="lang-btn-text">
+    <span class="current" id="btnCurrent">Currently: EN</span>
+    <span class="target"  id="btnTarget">العربية</span>
+  </span>
+  <span class="lang-btn-arrow" id="btnArrow">⇄</span>
+</button>
+
+<!-- ══════════════════════════════════════════
+     HERO
+══════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-badge" data-en="Beginner-Friendly Guide · 2025" data-ar="دليل تعليمي للمبتدئين · 2025"></div>
+  <h1>
+    <span data-en="Getting Started with" data-ar="ابدأ رحلتك مع"></span><br>
+    <span class="g">Ollama</span> &amp; <span class="b">Groq API</span>
+  </h1>
+  <p class="hero-sub"
+    data-en="A practical mini-guide for cybersecurity students, developers, and DFIR learners who want to integrate AI into real-world workflows — locally or via fast cloud inference."
+    data-ar="دليل عملي مبسّط لطلاب الأمن السيبراني والمطورين ومحللي DFIR الذين يريدون دمج الذكاء الاصطناعي في مشاريعهم الحقيقية — محلياً أو عبر السحابة."></p>
+  <div class="hero-tags">
+    <span class="hero-tag" data-en="🛡️ DFIR & Cybersecurity" data-ar="🛡️ الأمن السيبراني وDFIR"></span>
+    <span class="hero-tag" data-en="🐍 Python" data-ar="🐍 Python"></span>
+    <span class="hero-tag" data-en="🤖 Local AI" data-ar="🤖 ذكاء اصطناعي محلي"></span>
+    <span class="hero-tag" data-en="⚡ Cloud Inference" data-ar="⚡ استدلال سحابي سريع"></span>
+    <span class="hero-tag" data-en="🔍 Log Analysis" data-ar="🔍 تحليل السجلات"></span>
+    <span class="hero-tag" data-en="🧪 Hands-On Examples" data-ar="🧪 أمثلة تطبيقية"></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TOC
+══════════════════════════════════════════ -->
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#s1" class="active" data-en="01 · Intro"        data-ar="٠١ · مقدمة"></a>
+    <a href="#s2"               data-en="02 · Setup"         data-ar="٠٢ · التثبيت"></a>
+    <a href="#s3"               data-en="03 · Features"      data-ar="٠٣ · المميزات"></a>
+    <a href="#s4"               data-en="04 · Scenario"      data-ar="٠٤ · سيناريو عملي"></a>
+    <a href="#s5"               data-en="05 · Demo"          data-ar="٠٥ · تجربة مباشرة"></a>
+    <a href="#s6"               data-en="06 · Use Cases"     data-ar="٠٦ · حالات الاستخدام"></a>
+    <a href="#s7"               data-en="07 · Tips"          data-ar="٠٧ · نصائح"></a>
+    <a href="#s8"               data-en="08 · Summary"       data-ar="٠٨ · الخلاصة"></a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+<!-- ══════════════════════════════════════════
+     SECTION 1
+══════════════════════════════════════════ -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <div class="section-num">01</div>
+    <h2 class="section-title">
+      <span data-en="Introduction" data-ar="المقدمة"></span>
+      <span class="dim" data-en=" — What & Why" data-ar=" — ما هي وكيف تستخدمها"></span>
+    </h2>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title" data-en="What are AI APIs?" data-ar="ما هي واجهات برمجة الذكاء الاصطناعي؟"></div>
+      <p data-en="An <strong>AI API</strong> lets you send text to an AI model hosted in the cloud, and receive an intelligent response. Think of it as a smart function you call over the internet — you send a question or instruction, the model thinks, and returns an answer."
+         data-ar="تتيح لك <strong>واجهة برمجة الذكاء الاصطناعي</strong> إرسال نص إلى نموذج ذكاء اصطناعي مستضاف في السحابة، وتلقّي ردٍّ ذكي. تخيّلها كدالة برمجية تستدعيها عبر الإنترنت — ترسل سؤالاً، يفكّر النموذج، ثم يعيد الإجابة."></p>
+      <p class="mb0" data-en="Popular examples: <strong>OpenAI, Anthropic, Groq</strong> — all cloud-based, all pay-per-use."
+                     data-ar="أمثلة شائعة: <strong>OpenAI، Anthropic، Groq</strong> — كلها سحابية ومدفوعة حسب الاستخدام."></p>
+    </div>
+    <div class="card">
+      <div class="card-title" data-en="What are Local AI Models?" data-ar="ما هي نماذج الذكاء الاصطناعي المحلية؟"></div>
+      <p data-en="A <strong>local AI model</strong> runs entirely on your own computer — no internet needed. You own the data. Tools like <strong>Ollama</strong> make this dead simple by packaging models like LLaMA 3 into a single command-line tool."
+         data-ar="تعمل <strong>النماذج المحلية</strong> على جهازك تماماً دون الحاجة للإنترنت. بياناتك تبقى عندك. أداة مثل <strong>Ollama</strong> تجعل هذا بسيطاً جداً باستخدام أمر واحد في سطر الأوامر."></p>
+      <p class="mb0" data-en="Privacy-first. Offline-capable. Free to run."
+                     data-ar="خصوصية كاملة. يعمل بدون إنترنت. مجاني بالكامل."></p>
+    </div>
+  </div>
+
+  <div class="card mt16">
+    <div class="card-title" data-en="Why Ollama & Groq?" data-ar="لماذا Ollama و Groq تحديداً؟"></div>
+    <div class="three-col" style="margin-bottom:0">
+      <div>
+        <span class="badge green" style="margin-bottom:8px">Ollama</span>
+        <p style="font-size:13.5px;color:var(--muted)"
+           data-en="Runs open-source models locally. No cost. No data leaves your machine. Ideal for sensitive log files and private investigations."
+           data-ar="يشغّل النماذج مفتوحة المصدر محلياً. مجاني. البيانات لا تغادر جهازك. مثالي للسجلات الحساسة."></p>
+      </div>
+      <div>
+        <span class="badge blue" style="margin-bottom:8px">Groq API</span>
+        <p style="font-size:13.5px;color:var(--muted)"
+           data-en="Blazing-fast cloud inference using LPU hardware. Handles large documents and real-time queries with extremely low latency."
+           data-ar="استدلال سحابي فائق السرعة باستخدام معالجات LPU المتخصصة. يعالج مستندات ضخمة بزمن استجابة منخفض جداً."></p>
+      </div>
+      <div>
+        <span class="badge purple" style="margin-bottom:8px" data-en="Both Together" data-ar="كلاهما معاً"></span>
+        <p style="font-size:13.5px;color:var(--muted)"
+           data-en="Use local AI for private/sensitive data. Use Groq when you need speed and scale. Combine them in hybrid security pipelines."
+           data-ar="استخدم المحلي للبيانات الحساسة، وGroq حين تحتاج السرعة والحجم. ادمجهما في خطوط أمنية متكاملة."></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div data-en="<strong>Real-World Use:</strong> A DFIR analyst can use Ollama locally to analyze sensitive malware logs (keeping data on-premise), then use Groq to quickly summarize a large 50,000-line incident report in seconds."
+         data-ar="<strong>مثال من الواقع:</strong> محلل DFIR يستخدم Ollama محلياً لتحليل سجلات البرمجيات الخبيثة الحساسة (تبقى البيانات على الجهاز)، ثم يستخدم Groq لتلخيص تقرير حادثة يحوي 50,000 سطر في ثوانٍ."></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 2
+══════════════════════════════════════════ -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <div class="section-num">02</div>
+    <h2 class="section-title">
+      <span data-en="Installing & Setting Up" data-ar="التثبيت والإعداد"></span>
+      <span class="dim" data-en=" — Ollama + Groq" data-ar=" — Ollama و Groq"></span>
+    </h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--accent-green)" data-en="🦙 Part A — Ollama Setup" data-ar="🦙 الجزء الأول — إعداد Ollama"></div>
+    <p data-en="<strong>Ollama</strong> is an open-source tool that lets you download and run large language models on your local machine with a single command. It runs a local server on <code>localhost:11434</code>."
+       data-ar="<strong>Ollama</strong> أداة مفتوحة المصدر تتيح لك تنزيل وتشغيل نماذج لغوية كبيرة على جهازك بأمر واحد. تشغّل خادم استدلال محلي على المنفذ <code>localhost:11434</code>."></p>
+
+    <div class="table-wrap mt16">
+      <table>
+        <tr>
+          <th data-en="Platform" data-ar="النظام"></th>
+          <th data-en="Install Method" data-ar="طريقة التثبيت"></th>
+        </tr>
+        <tr>
+          <td>🍎 macOS</td>
+          <td data-en="Download installer from <code>ollama.com</code> or use <code>brew install ollama</code>"
+              data-ar="حمّل المثبّت من <code>ollama.com</code> أو استخدم <code>brew install ollama</code>"></td>
+        </tr>
+        <tr>
+          <td>🐧 Linux</td>
+          <td><code>curl -fsSL https://ollama.com/install.sh | sh</code></td>
+        </tr>
+        <tr>
+          <td>🪟 Windows</td>
+          <td data-en="Download <code>.exe</code> installer from <code>ollama.com/download</code>"
+              data-ar="حمّل ملف <code>.exe</code> من <code>ollama.com/download</code>"></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="terminal mt16">
+      <div class="terminal-header" data-en="TERMINAL — Running your first model" data-ar="TERMINAL — تشغيل أول نموذج"></div>
+      <div class="terminal-body">
+        <div class="term-line"><span class="term-prompt">$</span> <span class="term-cmd">ollama run llama3</span></div>
+        <div class="term-out" data-en="&gt; Pulling model llama3... (first-time download, ~4GB)" data-ar="&gt; Pulling model llama3... (التنزيل الأول ~4GB)"></div>
+        <div class="term-out">&gt; Model loaded into memory</div>
+        <div class="term-out">&gt;&gt;&gt; Send a message ( /? for help)</div>
+        <div class="term-line" style="margin-top:8px"><span class="term-prompt">$</span> <span class="term-cmd">ollama list</span></div>
+        <div class="term-out">&gt; NAME             ID           SIZE    MODIFIED</div>
+        <div class="term-out">&gt; llama3:latest    365c0bd3...  4.7 GB  2 minutes ago</div>
+        <div class="term-line" style="margin-top:8px"><span class="term-prompt">$</span> <span class="term-cmd">ollama pull mistral</span></div>
+        <div class="term-out">&gt; Pulling mistral:7b model...</div>
+      </div>
+    </div>
+
+    <div class="callout info" style="margin-top:12px">
+      <span class="callout-icon">ℹ</span>
+      <div data-en="<strong>What happens when you run <code>ollama run llama3</code>?</strong><br>Ollama downloads the model weights (first time only), loads them into memory, starts a local inference server, and drops you into an interactive chat session. Subsequent runs use the cached model — much faster."
+           data-ar="<strong>ماذا يحدث عند تشغيل <code>ollama run llama3</code>؟</strong><br>يقوم Ollama بتنزيل أوزان النموذج (للمرة الأولى فقط)، يحمّلها في الذاكرة، يشغّل خادم استدلال محلي، ويفتح لك جلسة محادثة تفاعلية. التشغيلات التالية أسرع لأن النموذج محفوظ مسبقاً."></div>
+    </div>
+
+    <div class="code-block mt16">
+      <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><div class="code-lang">Python · Ollama Local Call</div></div>
+      <div class="code-body"><pre><span class="kw">import</span> <span class="cls">requests</span>
+
+<span class="cmt"># Ollama runs a local API at port 11434</span>
+response = <span class="cls">requests</span>.<span class="fn">post</span>(
+    <span class="str">"http://localhost:11434/api/generate"</span>,
+    json={
+        <span class="str">"model"</span>: <span class="str">"llama3"</span>,
+        <span class="str">"prompt"</span>: <span class="str">"Explain what a reverse shell is in simple terms."</span>,
+        <span class="str">"stream"</span>: <span class="kw">False</span>
+    }
+)
+
+result = response.<span class="fn">json</span>()
+<span class="fn">print</span>(result[<span class="str">"response"</span>])</pre></div>
+    </div>
+  </div>
+
+  <div class="card mt24">
+    <div class="card-title" style="color:var(--accent-blue)" data-en="⚡ Part B — Groq API Setup" data-ar="⚡ الجزء الثاني — إعداد Groq API"></div>
+    <p data-en="<strong>Groq</strong> is a cloud AI service built on custom LPU hardware, making it one of the fastest AI inference platforms available. It mirrors the OpenAI API interface, so integration is straightforward."
+       data-ar="<strong>Groq</strong> خدمة ذكاء اصطناعي سحابية مبنية على معالجات LPU المتخصصة، مما يجعلها من أسرع منصات الاستدلال الموجودة. تستخدم نفس تنسيق API الخاص بـ OpenAI، لذا التكامل سهل جداً."></p>
+
+    <ul class="step-list mt16">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <strong data-en="Create a Free Account" data-ar="إنشاء حساب مجاني"></strong>
+          <p data-en="Visit <code>console.groq.com</code> and sign up with your email. The free tier is generous for learning and small projects."
+             data-ar="زر <code>console.groq.com</code> وسجّل بإيميلك. الخطة المجانية كافية جداً للتعلم والمشاريع الصغيرة."></p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong data-en="Generate an API Key" data-ar="توليد مفتاح API"></strong>
+          <p data-en="Go to <em>API Keys</em> in your dashboard → click <em>Create API Key</em> → copy the key immediately (it only shows once)."
+             data-ar="اذهب إلى <em>API Keys</em> في لوحة التحكم ← اضغط <em>Create API Key</em> ← انسخ المفتاح فوراً (يظهر مرة واحدة فقط)."></p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <strong data-en="Store the Key Securely" data-ar="تخزين المفتاح بأمان"></strong>
+          <p data-en="Never hardcode it in your script. Use an environment variable or a <code>.env</code> file."
+             data-ar="لا تضعه أبداً في الكود مباشرة. استخدم متغير بيئي أو ملف <code>.env</code>."></p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <strong data-en="Install the Python SDK" data-ar="تثبيت حزمة Python"></strong>
+          <p data-en="Run: <code>pip install groq</code> — Groq's official SDK handles auth, retries, and streaming."
+             data-ar="نفّذ: <code>pip install groq</code> — تتكفّل حزمة Groq الرسمية بالمصادقة وإعادة المحاولة والبث."></p>
+        </div>
+      </li>
+    </ul>
+
+    <div class="callout warn" style="margin-top:8px">
+      <span class="callout-icon">⚠</span>
+      <div data-en="<strong>Security Reminder:</strong> Never commit API keys to GitHub. Add <code>.env</code> to your <code>.gitignore</code>. Treat API keys like passwords — if leaked, regenerate immediately."
+           data-ar="<strong>تحذير أمني مهم:</strong> لا تنشر مفاتيح API أبداً على GitHub. أضف <code>.env</code> إلى ملف <code>.gitignore</code>. تعامل مع مفاتيح API كأنها كلمات مرور — إذا سُرّبت، أعد توليدها فوراً."></div>
+    </div>
+
+    <div class="code-block mt16">
+      <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><div class="code-lang">Python · Groq API — Secure Setup</div></div>
+      <div class="code-body"><pre><span class="cmt"># Create a .env file (NEVER commit this)</span>
+<span class="cmt"># GROQ_API_KEY=gsk_your_key_here</span>
+
+<span class="kw">import</span> <span class="cls">os</span>
+<span class="kw">from</span> <span class="cls">groq</span> <span class="kw">import</span> <span class="cls">Groq</span>
+<span class="kw">from</span> <span class="cls">dotenv</span> <span class="kw">import</span> load_dotenv
+
+load_dotenv()  <span class="cmt"># Load .env file</span>
+
+client = <span class="cls">Groq</span>(
+    api_key=<span class="cls">os</span>.<span class="fn">getenv</span>(<span class="str">"GROQ_API_KEY"</span>)
+)
+
+response = client.chat.completions.<span class="fn">create</span>(
+    model=<span class="str">"llama3-8b-8192"</span>,
+    messages=[
+        {
+            <span class="str">"role"</span>: <span class="str">"user"</span>,
+            <span class="str">"content"</span>: <span class="str">"What are common indicators of a phishing attack?"</span>
+        }
+    ]
+)
+
+<span class="fn">print</span>(response.choices[<span class="num">0</span>].message.content)</pre></div>
+    </div>
+
+    <div class="callout tip" style="margin-top:4px">
+      <span class="callout-icon">💡</span>
+      <div data-en="<strong>Available Models on Groq:</strong> <code>llama3-8b-8192</code>, <code>llama3-70b-8192</code>, <code>mixtral-8x7b-32768</code>, <code>gemma2-9b-it</code>. The <code>70b</code> model is smarter; the <code>8b</code> is faster."
+           data-ar="<strong>النماذج المتاحة على Groq:</strong> <code>llama3-8b-8192</code>، <code>llama3-70b-8192</code>، <code>mixtral-8x7b-32768</code>. النموذج <code>70b</code> أذكى؛ النموذج <code>8b</code> أسرع."></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 3
+══════════════════════════════════════════ -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <div class="section-num">03</div>
+    <h2 class="section-title">
+      <span data-en="Key Features" data-ar="المميزات الرئيسية"></span>
+      <span class="dim" data-en=" — What You Get" data-ar=" — ما الذي تحصل عليه"></span>
+    </h2>
+  </div>
+
+  <div class="three-col">
+    <div class="feature-card">
+      <div class="feature-icon green">🔒</div>
+      <h4 data-en="Local AI & Privacy" data-ar="الذكاء الاصطناعي المحلي والخصوصية"></h4>
+      <p data-en="With Ollama, your data never leaves your machine. Critical for analyzing real incident logs, PII data, or classified threat intel."
+         data-ar="مع Ollama، بياناتك لا تغادر جهازك أبداً. ضروري لتحليل سجلات الحوادث الحقيقية أو البيانات الشخصية أو معلومات التهديدات السرية."></p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon blue">⚡</div>
+      <h4 data-en="Fast Cloud Inference" data-ar="استدلال سحابي فائق السرعة"></h4>
+      <p data-en="Groq's LPU hardware delivers token speeds up to 10x faster than standard cloud providers — ideal for real-time analysis."
+         data-ar="تحقق معالجات LPU الخاصة بـ Groq سرعات توليد تصل إلى 10 أضعاف مقارنة بمزودي السحابة الاعتياديين — مثالي للتحليل الفوري."></p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon purple">🐍</div>
+      <h4 data-en="Easy Python Integration" data-ar="تكامل Python السهل"></h4>
+      <p data-en="Both tools have clean Python APIs. Install one package, write 10 lines, get AI responses. No ML expertise needed."
+         data-ar="لكلتا الأداتين واجهات Python نظيفة. ثبّت حزمة واحدة، اكتب 10 أسطر، احصل على ردود من الذكاء الاصطناعي."></p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon orange">🛠️</div>
+      <h4 data-en="Build Small Tools" data-ar="بناء أدوات صغيرة"></h4>
+      <p data-en="Create CLI assistants, log analyzers, report generators, or alert triage tools — all powered by AI with minimal code."
+         data-ar="اصنع مساعدات سطر أوامر، محلّلات سجلات، مولّدات تقارير، أو أدوات فرز التنبيهات — كلها مدعومة بالذكاء الاصطناعي بكود بسيط."></p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon green">💰</div>
+      <h4 data-en="Cost Effective" data-ar="فعّال من حيث التكلفة"></h4>
+      <p data-en="Ollama is free forever. Groq has a generous free tier. You can prototype and deploy real AI tools at essentially zero cost."
+         data-ar="Ollama مجاني للأبد. Groq له خطة مجانية سخية. يمكنك بناء ونشر أدوات ذكاء اصطناعي حقيقية بتكلفة تكاد تكون صفراً."></p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon blue">🔌</div>
+      <h4 data-en="OpenAI Compatible" data-ar="متوافق مع OpenAI"></h4>
+      <p data-en="Groq mirrors the OpenAI API format. If you know how to call GPT, you can call Groq — same code, different endpoint."
+         data-ar="Groq يتبع نفس تنسيق OpenAI API. إذا تعلّمت كيف تستدعي GPT، يمكنك استدعاء Groq — نفس الكود، عنوان مختلف."></p>
+    </div>
+  </div>
+
+  <div class="compare-strip mt24">
+    <div class="compare-col left">
+      <h4><span style="color:var(--accent-green)">🦙</span> <span data-en="Ollama — Best For" data-ar="Ollama — الأنسب لـ"></span></h4>
+      <ul>
+        <li data-en="Sensitive/private data analysis"      data-ar="تحليل البيانات الحساسة والخاصة"></li>
+        <li data-en="Offline / air-gapped environments"    data-ar="البيئات غير المتصلة بالإنترنت"></li>
+        <li data-en="No API cost — unlimited usage"        data-ar="بدون رسوم API — استخدام غير محدود"></li>
+        <li data-en="Learning without data concerns"       data-ar="التعلم دون قلق بشأن البيانات"></li>
+        <li data-en="On-prem SOC deployments"              data-ar="نشر مراكز العمليات الأمنية داخلياً"></li>
+      </ul>
+    </div>
+    <div class="compare-mid" data-en="VS" data-ar="مقابل"></div>
+    <div class="compare-col right">
+      <h4><span style="color:var(--accent-blue)">⚡</span> <span data-en="Groq — Best For" data-ar="Groq — الأنسب لـ"></span></h4>
+      <ul>
+        <li data-en="Very large document analysis"         data-ar="تحليل المستندات الضخمة جداً"></li>
+        <li data-en="Real-time / low latency needs"        data-ar="الاحتياجات الفورية وزمن الاستجابة المنخفض"></li>
+        <li data-en="Teams sharing a single endpoint"      data-ar="فرق تتشارك نقطة نهاية واحدة"></li>
+        <li data-en="Long context windows (32k tokens)"    data-ar="نوافذ سياق طويلة (32 ألف رمز)"></li>
+        <li data-en="Production-grade applications"        data-ar="التطبيقات على مستوى الإنتاج"></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 4
+══════════════════════════════════════════ -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <div class="section-num">04</div>
+    <h2 class="section-title">
+      <span data-en="Practical Scenario" data-ar="سيناريو عملي"></span>
+      <span class="dim" data-en=" — DFIR Case Study" data-ar=" — دراسة حالة DFIR"></span>
+    </h2>
+  </div>
+
+  <div class="scenario-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <span class="badge orange" data-en="Incident" data-ar="حادثة أمنية"></span>
+      <strong data-en="Suspicious Activity Detected — Internal Endpoint" data-ar="نشاط مشبوه مكتشف — جهاز داخلي"></strong>
+    </div>
+    <p style="font-size:14px;color:var(--muted)"
+       data-en="A cybersecurity analyst receives an alert at 2:47 AM. An internal workstation is generating unusual outbound traffic. They have raw syslog data, a process list, and a malware behavior description — and need to quickly triage."
+       data-ar="يتلقى محلل أمني تنبيهاً عند الساعة 2:47 صباحاً. جهاز داخلي يُولّد حركة مرور صادرة غير معتادة. لديه بيانات syslog خام، وقائمة عمليات، ووصف لسلوك برمجية خبيثة — ويحتاج إلى الفرز السريع."></p>
+  </div>
+  <div class="scenario-body">
+    <p style="font-size:14px;color:var(--muted);margin-bottom:20px"
+       data-en="Here's how they use AI to accelerate the analysis:"
+       data-ar="إليك كيف يستخدم الذكاء الاصطناعي لتسريع التحليل:"></p>
+
+    <div class="code-block">
+      <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><div class="code-lang">Python · Log Analyzer — Ollama (Local / Private)</div></div>
+      <div class="code-body"><pre><span class="kw">import</span> <span class="cls">requests</span>
+
+<span class="cmt"># Suspicious log excerpt (kept on local machine)</span>
+suspicious_log = <span class="str">"""
+[2025-03-29 02:47:13] WARN: Process 'svchost.exe' spawned by 'explorer.exe'
+[2025-03-29 02:47:14] NET: Outbound connection to 185.220.101.47:4444 (TOR exit node)
+[2025-03-29 02:47:15] FS: File created at C:\\Temp\\payload32.exe
+[2025-03-29 02:47:16] REG: HKLM\\Software\\Microsoft\\Run → payload32.exe added
+[2025-03-29 02:47:18] PROC: cmd.exe /c whoami && net user && ipconfig /all
+"""</span>
+
+system_prompt = <span class="str">"You are a DFIR analyst assistant. Analyze security logs, identify IOCs, MITRE ATT&CK techniques, and recommended actions."</span>
+
+user_message = <span class="str">f"Analyze these logs:\n\n{suspicious_log}"</span>
+
+response = <span class="cls">requests</span>.<span class="fn">post</span>(
+    <span class="str">"http://localhost:11434/api/generate"</span>,
+    json={
+        <span class="str">"model"</span>: <span class="str">"llama3"</span>,
+        <span class="str">"prompt"</span>: <span class="str">f"[SYSTEM]: {system_prompt}\n\n[USER]: {user_message}"</span>,
+        <span class="str">"stream"</span>: <span class="kw">False</span>
+    }
+)
+<span class="fn">print</span>(response.<span class="fn">json</span>()[<span class="str">"response"</span>])</pre></div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><div class="code-lang">Python · Incident Report Generator — Groq API</div></div>
+      <div class="code-body"><pre><span class="kw">from</span> <span class="cls">groq</span> <span class="kw">import</span> <span class="cls">Groq</span>
+<span class="kw">import</span> <span class="cls">os</span>; <span class="kw">from</span> <span class="cls">dotenv</span> <span class="kw">import</span> load_dotenv
+
+load_dotenv()
+client = <span class="cls">Groq</span>(api_key=<span class="cls">os</span>.<span class="fn">getenv</span>(<span class="str">"GROQ_API_KEY"</span>))
+
+response = client.chat.completions.<span class="fn">create</span>(
+    model=<span class="str">"llama3-70b-8192"</span>,
+    messages=[
+        {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"You are a senior incident responder. Generate structured reports."</span>},
+        {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: <span class="str">"Generate a formal incident report for: executable dropped to C:\\Temp, TOR C2 on port 4444, system recon performed."</span>}
+    ]
+)
+<span class="fn">print</span>(response.choices[<span class="num">0</span>].message.content)</pre></div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div data-en="<strong>Why split between both?</strong> Raw logs contain sensitive data → use Ollama locally. Final report generation (no raw data) → use Groq for speed and higher-quality output."
+           data-ar="<strong>لماذا نقسّم بين الاثنين؟</strong> السجلات الخام تحتوي بيانات حساسة ← استخدم Ollama محلياً. توليد التقرير النهائي (بدون بيانات خام) ← استخدم Groq للسرعة وجودة أعلى."></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 5
+══════════════════════════════════════════ -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <div class="section-num">05</div>
+    <h2 class="section-title">
+      <span data-en="Live Demo" data-ar="تجربة مباشرة"></span>
+      <span class="dim" data-en=" — Try It Now" data-ar=" — جرّب الآن"></span>
+    </h2>
+  </div>
+
+  <p style="color:var(--muted);font-size:14px;margin-bottom:20px"
+     data-en="The widget below simulates how an AI model would respond to security-related queries. Select a preset, edit if you like, and click Analyze."
+     data-ar="تحاكي الأداة أدناه كيف يستجيب نموذج الذكاء الاصطناعي للاستفسارات الأمنية. اختر مثالاً جاهزاً، عدّله إذا أردت، واضغط تحليل."></p>
+
+  <div class="demo-widget">
+    <div class="demo-title-bar" data-en="AI Security Assistant — Simulated Demo" data-ar="مساعد أمني بالذكاء الاصطناعي — نسخة تجريبية"></div>
+    <div class="demo-body">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <select class="demo-select" id="presetSelect" onchange="loadPreset(this.value)">
+          <option value="" data-en="— Load a preset prompt —" data-ar="— اختر استفساراً جاهزاً —"></option>
+          <option value="log"    data-en="Analyze suspicious log entry"    data-ar="تحليل مدخل سجل مشبوه"></option>
+          <option value="malware"data-en="Identify malware behavior"       data-ar="تحديد سلوك برمجية خبيثة"></option>
+          <option value="mitre"  data-en="Map to MITRE ATT&CK"             data-ar="ربط بإطار MITRE ATT&CK"></option>
+          <option value="report" data-en="Generate incident summary"       data-ar="إنشاء ملخص حادثة"></option>
+          <option value="ioc"    data-en="Extract IOCs from text"          data-ar="استخراج مؤشرات الاختراق IOCs"></option>
+        </select>
+      </div>
+      <div class="demo-input-row">
+        <input class="demo-input" type="text" id="demoInput"
+          data-en-placeholder="Type a security query or load a preset above..."
+          data-ar-placeholder="اكتب استفساراً أمنياً أو اختر مثالاً جاهزاً..."
+          value="Analyze suspicious activity: process injection detected, outbound port 4444 connection">
+        <button class="demo-btn" id="analyzeBtn" onclick="runDemo()"
+          data-en="Analyze →" data-ar="← تحليل"></button>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--muted);font-weight:600" data-en="AI Response" data-ar="ردّ الذكاء الاصطناعي"></span>
+          <span class="badge green">llama3 · <span data-en="local" data-ar="محلي"></span></span>
+        </div>
+        <div class="response-box" id="responseBox">
+          <span style="color:var(--muted)"
+            data-en="Response will appear here after you click Analyze →"
+            data-ar="سيظهر الرد هنا بعد الضغط على تحليل ←"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt16">
+    <div class="card-title" data-en="The Code Behind This Demo" data-ar="الكود خلف هذه التجربة"></div>
+    <div class="code-block" style="margin:0">
+      <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><div class="code-lang">Python · Universal AI Query Function</div></div>
+      <div class="code-body"><pre><span class="kw">def</span> <span class="fn">query_ai</span>(prompt, use_local=<span class="kw">True</span>):
+    <span class="str">"""
+    Universal: send prompt to Ollama (local) or Groq (cloud).
+    use_local=True  → Ollama  (private, free, offline-capable)
+    use_local=False → Groq    (fast, cloud, larger context)
+    """</span>
+    <span class="kw">if</span> use_local:
+        resp = <span class="cls">requests</span>.<span class="fn">post</span>(
+            <span class="str">"http://localhost:11434/api/generate"</span>,
+            json={<span class="str">"model"</span>: <span class="str">"llama3"</span>, <span class="str">"prompt"</span>: prompt, <span class="str">"stream"</span>: <span class="kw">False</span>}
+        )
+        <span class="kw">return</span> resp.<span class="fn">json</span>()[<span class="str">"response"</span>]
+    <span class="kw">else</span>:
+        client = <span class="cls">Groq</span>(api_key=<span class="cls">os</span>.<span class="fn">getenv</span>(<span class="str">"GROQ_API_KEY"</span>))
+        resp = client.chat.completions.<span class="fn">create</span>(
+            model=<span class="str">"llama3-70b-8192"</span>,
+            messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}]
+        )
+        <span class="kw">return</span> resp.choices[<span class="num">0</span>].message.content
+
+result = <span class="fn">query_ai</span>(<span class="str">"Analyze suspicious activity"</span>, use_local=<span class="kw">True</span>)
+result = <span class="fn">query_ai</span>(<span class="str">"Generate incident report"</span>,    use_local=<span class="kw">False</span>)</pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 6
+══════════════════════════════════════════ -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <div class="section-num">06</div>
+    <h2 class="section-title">
+      <span data-en="Use Cases" data-ar="حالات الاستخدام"></span>
+      <span class="dim" data-en=" — Real Applications" data-ar=" — تطبيقات حقيقية"></span>
+    </h2>
+  </div>
+
+  <div class="usecase-grid">
+    <div class="usecase-card"><div class="uc-icon">🕵️</div>
+      <h4 data-en="DFIR Assistant"            data-ar="مساعد DFIR"></h4>
+      <p data-en="Walk an AI through incident timelines. Get instant summaries of what happened, when, and in what order — no manual pivot required."
+         data-ar="أرسل للذكاء الاصطناعي الجداول الزمنية للحوادث. احصل على ملخصات فورية لما حدث ومتى وبأي ترتيب — دون حاجة للفرز اليدوي."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">📋</div>
+      <h4 data-en="Log Analyzer"              data-ar="محلّل السجلات"></h4>
+      <p data-en="Paste syslog, firewall, or SIEM output. Ask the model to identify anomalies, flag suspicious patterns, or extract IPs and file hashes."
+         data-ar="الصق مخرجات syslog أو جدار الحماية أو SIEM. اطلب من النموذج رصد الشذوذات وتحديد الأنماط المشبوهة واستخراج عناوين IP والهاشات."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">📄</div>
+      <h4 data-en="Incident Report Generator"  data-ar="مولّد تقارير الحوادث"></h4>
+      <p data-en="Feed raw notes, logs, and IOCs. Get a structured, professional incident report formatted for management or stakeholders."
+         data-ar="أدخل ملاحظاتك الخام والسجلات ومؤشرات الاختراق. احصل على تقرير حادثة منظم ومهني لإدارة أصحاب المصلحة."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">🌐</div>
+      <h4 data-en="Threat Intelligence Helper"  data-ar="مساعد استخبارات التهديدات"></h4>
+      <p data-en="Describe a threat actor's behavior. AI maps it to known APT groups, recent campaigns, or OSINT sources to investigate."
+         data-ar="صف سلوك جهة تهديد. يربطها الذكاء الاصطناعي بمجموعات APT المعروفة والحملات الأخيرة ومصادر OSINT للتحقيق."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">🗺️</div>
+      <h4 data-en="MITRE ATT&CK Mapper"        data-ar="ربط MITRE ATT&CK"></h4>
+      <p data-en="Describe observed attacker behaviors. AI suggests matching ATT&CK tactics and techniques (T-codes) automatically."
+         data-ar="صف السلوكيات الملاحظة للمهاجم. يقترح الذكاء الاصطناعي تلقائياً التكتيكات والتقنيات المطابقة في إطار ATT&CK."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">🔍</div>
+      <h4 data-en="IOC Extractor"              data-ar="مستخرج مؤشرات الاختراق IOCs"></h4>
+      <p data-en="Paste unstructured threat reports. AI extracts IPs, domains, hashes, file names, and CVEs into a clean structured list."
+         data-ar="الصق تقارير تهديدات غير منظمة. يستخرج الذكاء الاصطناعي عناوين IP والنطاقات والهاشات وأسماء الملفات وثغرات CVE."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">🤖</div>
+      <h4 data-en="Alert Triage Bot"           data-ar="روبوت فرز التنبيهات"></h4>
+      <p data-en="Pipe SIEM alerts to an AI that classifies them as true positive, false positive, or needs review — with reasoning."
+         data-ar="أرسل تنبيهات SIEM إلى ذكاء اصطناعي يصنّفها: إيجابية حقيقية، إيجابية كاذبة، أو تحتاج مراجعة — مع تفسير منطقي."></p>
+    </div>
+    <div class="usecase-card"><div class="uc-icon">🧰</div>
+      <h4 data-en="Python Script Helper"       data-ar="مساعد كتابة الأدوات"></h4>
+      <p data-en="Ask AI to write YARA rules, Sigma detection rules, or Python parsers for custom log formats."
+         data-ar="اطلب من الذكاء الاصطناعي كتابة قواعد YARA أو Sigma أو محللات Python لصيغ سجلات مخصصة."></p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 7
+══════════════════════════════════════════ -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <div class="section-num">07</div>
+    <h2 class="section-title">
+      <span data-en="Quick Tips" data-ar="نصائح سريعة"></span>
+      <span class="dim" data-en=" — Best Practices" data-ar=" — أفضل الممارسات"></span>
+    </h2>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="tip-card">
+        <strong data-en="🔒 USE LOCAL AI WHEN…" data-ar="🔒 استخدم الذكاء الاصطناعي المحلي حين..."></strong>
+        <span data-en="You have raw logs, credentials, PII, or any data that shouldn't leave your network. Ollama is always the right choice for sensitive incident data."
+              data-ar="تملك سجلات خام أو بيانات اعتماد أو معلومات شخصية أو أي بيانات يجب ألا تغادر شبكتك. Ollama دائماً الخيار الصحيح للبيانات الحساسة."></span>
+      </div>
+      <div class="tip-card blue">
+        <strong data-en="⚡ USE GROQ WHEN…" data-ar="⚡ استخدم Groq حين..."></strong>
+        <span data-en="You need speed, large context windows (e.g., a full 50,000-line PCAP summary), or you're working with sanitized/anonymized data."
+              data-ar="تحتاج السرعة أو نوافذ سياق كبيرة (مثل ملف PCAP بـ 50,000 سطر)، أو حين تعمل مع بيانات منقّحة أو مجهولة الهوية."></span>
+      </div>
+      <div class="tip-card purple">
+        <strong data-en="🔄 COMBINE BOTH WHEN…" data-ar="🔄 ادمجهما حين..."></strong>
+        <span data-en="Use Ollama for initial local triage and IOC extraction, then pass anonymized summaries to Groq for faster, higher-quality report generation."
+              data-ar="استخدم Ollama للفرز المحلي الأولي واستخراج IOC، ثم أرسل الملخصات المجهولة إلى Groq لتوليد تقارير أسرع وبجودة أعلى."></span>
+      </div>
+      <div class="tip-card orange">
+        <strong data-en="📝 WRITE BETTER PROMPTS" data-ar="📝 اكتب استفسارات أفضل"></strong>
+        <span data-en='Always give context: "You are a DFIR analyst..." before your query. Structured prompts get structured, useful responses.'
+              data-ar='أعطِ سياقاً دائماً: "أنت محلل DFIR..." قبل استفسارك. الاستفسارات المنظمة تعطي ردوداً منظمة ومفيدة.'></span>
+      </div>
+    </div>
+    <div>
+      <!-- MODEL GUIDE CARD -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title" data-en="🧠 Model Size Guide — Which to Use?" data-ar="🧠 دليل أحجام النماذج — أيها تختار؟"></div>
+
+        <!-- SIZE EXPLAINER -->
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;border-top:2px solid var(--accent-orange)">
+            <div style="font-size:18px;margin-bottom:6px">🐣</div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent-orange);margin-bottom:4px" data-en="Small (1B–3B)" data-ar="صغير (1B–3B)"></div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6" data-en="Very fast, low RAM. Good for simple yes/no questions only. <strong style='color:var(--accent-red)'>Not suitable for security analysis.</strong>" data-ar="سريع جداً، ذاكرة منخفضة. مناسب فقط للأسئلة البسيطة. <strong style='color:var(--accent-red)'>غير مناسب لتحليل الأمن.</strong>"></div>
+          </div>
+          <div style="flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;border-top:2px solid var(--accent-blue)">
+            <div style="font-size:18px;margin-bottom:6px">🐦</div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent-blue);margin-bottom:4px" data-en="Medium (7B–9B)" data-ar="متوسط (7B–9B)"></div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6" data-en="Good balance of speed and quality. Handles log analysis, IOC extraction, basic reports. <strong style='color:var(--accent-blue)'>Recommended starting point.</strong>" data-ar="توازن جيد بين السرعة والجودة. يتعامل مع تحليل السجلات واستخراج IOC والتقارير الأساسية. <strong style='color:var(--accent-blue)'>نقطة البداية الموصى بها.</strong>"></div>
+          </div>
+          <div style="flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;border-top:2px solid var(--accent-green)">
+            <div style="font-size:18px;margin-bottom:6px">🦅</div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent-green);margin-bottom:4px" data-en="Large (70B+)" data-ar="كبير (70B+)"></div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6" data-en="Highest quality reasoning. Best for complex threat analysis, formal reports, MITRE mapping. <strong style='color:var(--accent-green)'>Use via Groq (too heavy for most PCs).</strong>" data-ar="أعلى جودة في التفكير المنطقي. الأفضل للتحليل المعقد والتقارير الرسمية وربط MITRE. <strong style='color:var(--accent-green)'>استخدمه عبر Groq (ثقيل على معظم الأجهزة).</strong>"></div>
+          </div>
+        </div>
+
+        <!-- MODEL TABLE -->
+        <div class="table-wrap" style="margin:0">
+          <table>
+            <tr>
+              <th data-en="Model" data-ar="النموذج"></th>
+              <th data-en="Size" data-ar="الحجم"></th>
+              <th data-en="Where" data-ar="أين"></th>
+              <th data-en="Best For" data-ar="الأنسب لـ"></th>
+            </tr>
+            <tr>
+              <td><code>phi3</code></td>
+              <td><span style="color:var(--accent-orange);font-size:12px;font-weight:600">3B</span></td>
+              <td><span class="badge green" style="font-size:10px">Ollama</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="Quick tests, simple Q&A" data-ar="اختبارات سريعة، أسئلة بسيطة"></td>
+            </tr>
+            <tr>
+              <td><code>llama3.2</code></td>
+              <td><span style="color:var(--accent-blue);font-size:12px;font-weight:600">8B</span></td>
+              <td><span class="badge green" style="font-size:10px">Ollama</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="Log analysis, IOC extraction, local triage" data-ar="تحليل السجلات، استخراج IOC، الفرز المحلي"></td>
+            </tr>
+            <tr>
+              <td><code>mistral</code></td>
+              <td><span style="color:var(--accent-blue);font-size:12px;font-weight:600">7B</span></td>
+              <td><span class="badge green" style="font-size:10px">Ollama</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="General security tasks, fast responses" data-ar="المهام الأمنية العامة، ردود سريعة"></td>
+            </tr>
+            <tr>
+              <td><code>codellama</code></td>
+              <td><span style="color:var(--accent-blue);font-size:12px;font-weight:600">7B</span></td>
+              <td><span class="badge green" style="font-size:10px">Ollama</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="YARA rules, scripts, technical code analysis" data-ar="كتابة قواعد YARA، السكريبتات، تحليل الكود التقني"></td>
+            </tr>
+            <tr>
+              <td><code>llama-3.1-8b-instant</code></td>
+              <td><span style="color:var(--accent-blue);font-size:12px;font-weight:600">8B</span></td>
+              <td><span class="badge blue" style="font-size:10px">Groq</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="Fast cloud queries, real-time alert triage" data-ar="استفسارات سحابية سريعة، فرز التنبيهات الفوري"></td>
+            </tr>
+            <tr>
+              <td><code>llama-3.3-70b-versatile</code></td>
+              <td><span style="color:var(--accent-green);font-size:12px;font-weight:600">70B</span></td>
+              <td><span class="badge blue" style="font-size:10px">Groq</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="Formal incident reports, MITRE mapping, complex analysis" data-ar="التقارير الرسمية، ربط MITRE، التحليل المعقد"></td>
+            </tr>
+            <tr>
+              <td><code>mixtral-8x7b-32768</code></td>
+              <td><span style="color:var(--accent-green);font-size:12px;font-weight:600">47B</span></td>
+              <td><span class="badge blue" style="font-size:10px">Groq</span></td>
+              <td style="font-size:13px;color:var(--muted)" data-en="Very long documents, large log files (32k context)" data-ar="المستندات الطويلة جداً، ملفات السجلات الكبيرة (سياق 32k)"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- MISTAKES CARD -->
+      <div class="card">
+        <div class="card-title" data-en="Common Beginner Mistakes" data-ar="أخطاء شائعة للمبتدئين"></div>
+        <div class="callout danger" style="margin-bottom:10px">
+          <span class="callout-icon">✗</span>
+          <div data-en="<strong>Hardcoding API keys</strong> in Python files that end up on GitHub."
+               data-ar="<strong>ترميز مفاتيح API مباشرة</strong> في ملفات Python تنتهي على GitHub."></div>
+        </div>
+        <div class="callout danger" style="margin-bottom:10px">
+          <span class="callout-icon">✗</span>
+          <div data-en="<strong>Sending real PII or credentials</strong> to cloud APIs like Groq."
+               data-ar="<strong>إرسال بيانات شخصية حقيقية أو بيانات اعتماد</strong> إلى واجهات API السحابية كـ Groq."></div>
+        </div>
+        <div class="callout danger" style="margin-bottom:10px">
+          <span class="callout-icon">✗</span>
+          <div data-en="<strong>Trusting AI output blindly.</strong> Always verify results — AI can hallucinate."
+               data-ar="<strong>الوثوق العمياء بنتائج الذكاء الاصطناعي.</strong> تحقق دائماً — الذكاء الاصطناعي قد يخطئ."></div>
+        </div>
+        <div class="callout danger">
+          <span class="callout-icon">✗</span>
+          <div data-en="<strong>Using tiny models</strong> (like 1B–3B params) for complex analysis — use at least 7B or 8B."
+               data-ar="<strong>استخدام نماذج صغيرة جداً</strong> (كـ 1B–3B معامل) للتحليل المعقد — استخدم على الأقل 7B أو 8B."></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     SECTION 8
+══════════════════════════════════════════ -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <div class="section-num">08</div>
+    <h2 class="section-title">
+      <span data-en="Summary" data-ar="الخلاصة"></span>
+      <span class="dim" data-en=" — What You've Learned" data-ar=" — ما الذي تعلّمته"></span>
+    </h2>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-item"><div class="summary-check">✓</div><div>
+      <h4 data-en="What AI APIs and local models are"     data-ar="ما هي واجهات AI API والنماذج المحلية"></h4>
+      <p  data-en="APIs call remote cloud models; local models run on your own hardware with full privacy."
+          data-ar="APIs تستدعي نماذج سحابية بعيدة؛ النماذج المحلية تعمل على جهازك بخصوصية كاملة."></p>
+    </div></div>
+    <div class="summary-item"><div class="summary-check">✓</div><div>
+      <h4 data-en="How to set up Ollama"                 data-ar="كيفية إعداد Ollama"></h4>
+      <p  data-en="Install → <code>ollama run llama3</code> → call via Python on localhost:11434."
+          data-ar="التثبيت ← <code>ollama run llama3</code> ← الاستدعاء عبر Python على localhost:11434."></p>
+    </div></div>
+    <div class="summary-item"><div class="summary-check">✓</div><div>
+      <h4 data-en="How to use the Groq API"              data-ar="كيفية استخدام Groq API"></h4>
+      <p  data-en="Create account → generate key → store in <code>.env</code> → call with the <code>groq</code> SDK."
+          data-ar="إنشاء حساب ← توليد مفتاح ← التخزين في <code>.env</code> ← الاستدعاء بحزمة Python."></p>
+    </div></div>
+    <div class="summary-item"><div class="summary-check">✓</div><div>
+      <h4 data-en="When to use each tool"                data-ar="متى تستخدم كل أداة"></h4>
+      <p  data-en="Ollama for sensitive/private data. Groq for speed and large context. Both for hybrid workflows."
+          data-ar="Ollama للبيانات الحساسة. Groq للسرعة والسياق الكبير. كلاهما للسير العمل الهجينة."></p>
+    </div></div>
+    <div class="summary-item"><div class="summary-check">✓</div><div>
+      <h4 data-en="Real security use cases"              data-ar="حالات استخدام أمنية حقيقية"></h4>
+      <p  data-en="Log analysis, MITRE mapping, IOC extraction, incident reports, alert triage, and more."
+          data-ar="تحليل السجلات، ربط MITRE، استخراج IOC، تقارير الحوادث، فرز التنبيهات، والمزيد."></p>
+    </div></div>
+    <div class="summary-item"><div class="summary-check">✓</div><div>
+      <h4 data-en="Python integration patterns"          data-ar="أنماط تكامل Python"></h4>
+      <p  data-en="Simple <code>requests.post()</code> for Ollama; <code>groq</code> SDK with secure env variable loading for Groq."
+          data-ar="<code>requests.post()</code> بسيطة لـ Ollama؛ حزمة <code>groq</code> مع تحميل آمن للمتغيرات لـ Groq."></p>
+    </div></div>
+  </div>
+
+  <div class="next-steps">
+    <h3 data-en="🚀 Recommended Next Steps" data-ar="🚀 الخطوات التالية الموصى بها"></h3>
+    <ol>
+      <li data-en="Install Ollama and run <code>ollama run llama3</code> — have your first local AI conversation"
+          data-ar="ثبّت Ollama ونفّذ <code>ollama run llama3</code> — أجرِ أول محادثة مع ذكاء اصطناعي محلي"></li>
+      <li data-en="Sign up at <code>console.groq.com</code>, generate an API key, and run the example code above"
+          data-ar="سجّل في <code>console.groq.com</code>، ولّد مفتاح API، ونفّذ الكود التجريبي أعلاه"></li>
+      <li data-en="Build a simple Python script: read a text log file → send to AI → print analysis"
+          data-ar="ابنِ سكريبت Python بسيط: اقرأ ملف سجل ← أرسله للذكاء الاصطناعي ← اطبع التحليل"></li>
+      <li data-en="Try different models (mistral, phi3, codellama) and compare their security analysis quality"
+          data-ar="جرّب نماذج مختلفة (mistral، phi3، codellama) وقارن جودة تحليلها الأمني"></li>
+      <li data-en="Build a small CLI tool: input an alert description, output a MITRE ATT&CK mapping"
+          data-ar="ابنِ أداة CLI صغيرة: أدخل وصف تنبيه ← احصل على ربط MITRE ATT&CK"></li>
+      <li data-en="Study system prompts — learn how to give AI a consistent security analyst persona"
+          data-ar="ادرس System Prompts — تعلّم كيف تمنح الذكاء الاصطناعي شخصية ثابتة للعمل الأمني"></li>
+      <li data-en="Explore Ollama's OpenAI-compatible API for easy drop-in replacement in existing tools"
+          data-ar="استكشف Ollama API المتوافق مع OpenAI لاستبدال الأكواد الحالية بسهولة"></li>
+    </ol>
+  </div>
+
+  <div class="callout tip" style="margin-top:24px">
+    <span class="callout-icon">🎓</span>
+    <div data-en="<strong>Remember:</strong> AI is a force multiplier, not a replacement. Use these tools to move faster and handle repetitive analysis — but always apply your own expertise and judgment to the results."
+         data-ar="<strong>تذكّر:</strong> الذكاء الاصطناعي هو مضاعف للقوة، وليس بديلاً عنك. استخدم هذه الأدوات للتحرك بسرعة أكبر ومعالجة التحليل المتكرر — لكن دائماً طبّق خبرتك وحكمتك على النتائج."></div>
+  </div>
+
+  <div style="text-align:center;margin-top:40px;padding-top:32px;border-top:1px solid var(--border)">
+    <p style="font-size:13px;color:var(--muted)" data-en="Guide v1.0 · For cybersecurity learners, developers & DFIR students · 2025" data-ar="الإصدار 1.0 · مُعدّ لطلاب الأمن السيبراني والمطورين ومحللي DFIR · 2025"></p>
+    <p style="font-size:13px;color:var(--muted)">Ollama — <code>ollama.com</code> · Groq — <code>groq.com</code> · <span data-en="Models" data-ar="النماذج"></span> — <code>ollama.com/library</code></p>
+  </div>
+</section>
+
+</div><!-- /wrapper -->
+
+<script>
+/* ══════════════════════════════════════════
+   LANGUAGE ENGINE
+══════════════════════════════════════════ */
+let currentLang = 'en';
+
+const presetsEN = {
+  log:     "Analyze suspicious log: svchost.exe spawning cmd.exe, connecting to 185.220.101.47:4444, creating files in C:\\Temp",
+  malware: "Identify malware behavior: executable dropped in temp folder, Run key persistence, whoami and net user recon executed",
+  mitre:   "Map to MITRE ATT&CK: spear-phishing email with macro doc, reverse shell established, privilege escalation via token impersonation",
+  report:  "Generate incident summary: unauthorized access detected, 3 hosts compromised, data exfiltration via port 443 to 192.0.2.55, 4 hours",
+  ioc:     "Extract IOCs: campaign used domain c2-server.evil.io, IP 203.0.113.88, hash d41d8cd98f00b204e9800998ecf8427e, CVE-2024-1234"
+};
+const presetsAR = {
+  log:     "تحليل سجل مشبوه: svchost.exe يولد cmd.exe، اتصال بـ 185.220.101.47:4444، إنشاء ملفات في C:\\Temp",
+  malware: "تحديد سلوك برمجية خبيثة: ملف تنفيذي أُسقط في مجلد مؤقت، إضافة مفتاح Run للاستمرارية، تنفيذ whoami و net user للاستطلاع",
+  mitre:   "ربط بـ MITRE ATT&CK: المهاجم استخدم بريداً إلكترونياً موجهاً بمستند ماكرو، أنشأ reverse shell، صعّد الصلاحيات عبر token impersonation",
+  report:  "إنشاء ملخص حادثة: وصول غير مصرح به مكتشف، 3 أجهزة داخلية مخترقة، تسريب بيانات عبر المنفذ 443، المدة 4 ساعات",
+  ioc:     "استخراج IOCs: الحملة استخدمت النطاق c2-server.evil.io، عنوان IP 203.0.113.88، هاش d41d8cd98f00b204e9800998ecf8427e، استغلّت CVE-2024-1234"
+};
+
+const responsesEN = [
+  "🔍 Analysis initiated...\n\n",
+  "📌 THREAT CLASSIFICATION: High Severity\n\n",
+  "🎯 OBSERVED TECHNIQUES (MITRE ATT&CK):\n• T1059.003 — Windows Command Shell (cmd.exe execution)\n• T1055 — Process Injection (suspicious parent-child process)\n• T1071 — Application Layer Protocol (C2 over standard port)\n• T1547.001 — Registry Run Keys (persistence mechanism)\n\n",
+  "⚠️  INDICATORS OF COMPROMISE:\n• Outbound connection to known TOR exit node\n• Suspicious process spawn chain detected\n• File dropped to staging directory (C:\\Temp)\n• Reconnaissance commands executed post-compromise\n\n",
+  "✅ RECOMMENDED ACTIONS:\n1. Isolate the affected endpoint immediately\n2. Block outbound connections to flagged IPs at firewall\n3. Preserve memory dump and disk image for forensics\n4. Search for lateral movement on adjacent hosts\n5. Hunt for persistence mechanisms across the fleet"
+];
+const responsesAR = [
+  "🔍 جارٍ تشغيل التحليل...\n\n",
+  "📌 تصنيف التهديد: خطورة عالية\n\n",
+  "🎯 التقنيات المرصودة (MITRE ATT&CK):\n• T1059.003 — واجهة سطر أوامر Windows\n• T1055 — حقن العمليات (سلسلة عمليات مشبوهة)\n• T1071 — بروتوكول طبقة التطبيق (C2 عبر منفذ قياسي)\n• T1547.001 — مفاتيح تشغيل التسجيل (آلية استمرارية)\n\n",
+  "⚠️  مؤشرات الاختراق (IOCs):\n• اتصال صادر بعقدة خروج TOR معروفة\n• سلسلة عمليات مشبوهة مكتشفة\n• ملف أُسقط في مجلد تنظيم (C:\\Temp)\n• أوامر استطلاع نُفّذت بعد الاختراق\n\n",
+  "✅ الإجراءات الموصى بها:\n1. عزل الجهاز المصاب فوراً\n2. حظر الاتصالات الصادرة لعناوين IP المبلّغ عنها\n3. حفظ تفريغ الذاكرة وصورة القرص للتحليل الجنائي\n4. البحث عن مؤشرات الحركة الجانبية في الأجهزة المجاورة\n5. بدء تتبع التهديدات لآليات الاستمرارية عبر الأسطول"
+];
+
+function applyLang(lang) {
+  const html = document.getElementById('htmlRoot');
+  html.setAttribute('lang', lang);
+  html.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  document.title = lang === 'ar'
+    ? 'دليل Ollama و Groq API — للمبتدئين'
+    : 'Ollama & Groq API — Beginner\'s Guide';
+
+  // Update all data-en / data-ar text nodes
+  document.querySelectorAll('[data-en]').forEach(el => {
+    const txt = el.getAttribute('data-' + lang);
+    if (txt !== null) el.innerHTML = txt;
+  });
+
+  // Update placeholders
+  document.querySelectorAll('[data-en-placeholder]').forEach(el => {
+    el.placeholder = el.getAttribute('data-' + lang + '-placeholder') || '';
+  });
+
+  // Update demo input default text
+  const inp = document.getElementById('demoInput');
+  if (inp) {
+    inp.value = lang === 'ar'
+      ? 'تحليل نشاط مشبوه: اكتشاف حقن عملية واتصال صادر على المنفذ 4444'
+      : 'Analyze suspicious activity: process injection detected, outbound port 4444 connection';
+  }
+
+  // Reset response box
+  const box = document.getElementById('responseBox');
+  if (box) {
+    box.className = 'response-box';
+    box.innerHTML = `<span style="color:var(--muted)">${
+      lang === 'ar'
+        ? 'سيظهر الرد هنا بعد الضغط على تحليل ←'
+        : 'Response will appear here after you click Analyze →'
+    }</span>`;
+  }
+
+  // Reset preset select
+  const sel = document.getElementById('presetSelect');
+  if (sel) sel.value = '';
+
+  // Update button
+  document.getElementById('btnFlag').textContent    = lang === 'ar' ? '🇬🇧' : '🇸🇦';
+  document.getElementById('btnCurrent').textContent = lang === 'ar' ? 'Currently: AR' : 'Currently: EN';
+  document.getElementById('btnTarget').textContent  = lang === 'ar' ? 'English' : 'العربية';
+}
+
+function toggleLang() {
+  const btn = document.getElementById('langBtn');
+  btn.classList.add('switching');
+  document.body.classList.add('fading');
+
+  setTimeout(() => {
+    currentLang = currentLang === 'en' ? 'ar' : 'en';
+    applyLang(currentLang);
+    document.body.classList.remove('fading');
+    btn.classList.remove('switching');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 250);
+}
+
+/* ══════════════════════════════════════════
+   TOC ACTIVE STATE
+══════════════════════════════════════════ */
+const sections = document.querySelectorAll('.section');
+const navLinks = document.querySelectorAll('.toc a');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.toc a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.25 });
+sections.forEach(s => io.observe(s));
+
+navLinks.forEach(l => {
+  l.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelector(l.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+/* ══════════════════════════════════════════
+   PRESET LOADER
+══════════════════════════════════════════ */
+function loadPreset(val) {
+  if (!val) return;
+  const presets = currentLang === 'ar' ? presetsAR : presetsEN;
+  if (presets[val]) {
+    document.getElementById('demoInput').value = presets[val];
+    document.getElementById('presetSelect').value = '';
+  }
+}
+
+/* ══════════════════════════════════════════
+   DEMO RUNNER
+══════════════════════════════════════════ */
+async function runDemo() {
+  const input = document.getElementById('demoInput').value.trim();
+  if (!input) return;
+  const box = document.getElementById('responseBox');
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = currentLang === 'ar' ? 'جارٍ التحليل...' : 'Analyzing...';
+  box.className = 'response-box active';
+  box.textContent = '';
+  const chunks = currentLang === 'ar' ? responsesAR : responsesEN;
+  for (let i = 0; i < chunks.length; i++) {
+    await new Promise(r => setTimeout(r, 300 + i * 220));
+    box.textContent += chunks[i];
+  }
+  btn.disabled = false;
+  btn.textContent = currentLang === 'ar' ? '← تحليل' : 'Analyze →';
+}
+
+document.getElementById('demoInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runDemo();
+});
+
+// Init
+applyLang('en');
+</script>
+</body>
+</html>
