@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SceneMind — منصة التحقيق الجنائي الرقمي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600;700;800&family=Crimson+Pro:ital,wght@0,400;1,400&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #0a0a0a;
+  --deep: #111111;
+  --surface: #1a1a1a;
+  --border: #2a2a2a;
+  --muted: #555;
+  --text: #c8c8c8;
+  --text-bright: #e8e8e8;
+  --yellow: #e8c84a;
+  --yellow-dim: #b89e30;
+  --yellow-glow: rgba(232, 200, 74, 0.15);
+  --teal: #3dd6c8;
+  --teal-dim: #2aa89c;
+  --teal-glow: rgba(61, 214, 200, 0.12);
+  --red: #e84a4a;
+  --evidence-stripe: repeating-linear-gradient(90deg, #e8c84a 0px, #e8c84a 20px, #0a0a0a 20px, #0a0a0a 40px);
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-body: 'Tajawal', 'Outfit', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+  --font-accent: 'Crimson Pro', serif;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: var(--yellow-dim) var(--deep); }
+
+body { background: var(--black); color: var(--text); font-family: var(--font-body); overflow-x: hidden; cursor: crosshair; direction: rtl; }
+
+::selection { background: var(--yellow); color: var(--black); }
+
+body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 9999; }
+body::after { content: ''; position: fixed; inset: 0; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 9998; }
+
+.nav-tape { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 4px; background: var(--evidence-stripe); }
+.nav-bar { position: fixed; top: 4px; left: 0; right: 0; z-index: 999; background: rgba(10,10,10,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; transform: translateY(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.nav-bar.visible { transform: translateY(0); }
+.nav-logo { font-family: var(--font-mono); color: var(--yellow); font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase; direction: ltr; }
+.nav-logo span { color: var(--teal); }
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a { font-family: var(--font-body); font-size: 0.8rem; color: var(--muted); text-decoration: none; transition: color 0.3s; position: relative; font-weight: 500; }
+.nav-links a::after { content: ''; position: absolute; bottom: -4px; right: 0; width: 0; height: 1px; background: var(--yellow); transition: width 0.3s; }
+.nav-links a:hover { color: var(--yellow); }
+.nav-links a:hover::after { width: 100%; }
+
+.hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 2rem; }
+.hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(61,214,200,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(61,214,200,0.04) 1px, transparent 1px); background-size: 60px 60px; animation: gridPulse 8s ease-in-out infinite; }
+@keyframes gridPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.hero-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 30%, var(--black) 80%); }
+.crime-markers { position: absolute; inset: 0; pointer-events: none; }
+.marker { position: absolute; width: 36px; height: 52px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--black); animation: markerFloat 6s ease-in-out infinite; }
+.marker svg { width: 100%; height: 100%; position: absolute; }
+.marker span { position: relative; z-index: 1; margin-top: -8px; }
+.marker:nth-child(1) { top: 15%; left: 12%; animation-delay: 0s; }
+.marker:nth-child(2) { top: 70%; left: 8%; animation-delay: 1.5s; }
+.marker:nth-child(3) { top: 25%; right: 15%; animation-delay: 0.8s; }
+.marker:nth-child(4) { bottom: 20%; right: 10%; animation-delay: 2.2s; }
+.marker:nth-child(5) { top: 55%; left: 20%; animation-delay: 3s; }
+@keyframes markerFloat { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+
+.hero-content { position: relative; z-index: 10; text-align: center; max-width: 900px; }
+.case-file-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 6px; color: var(--teal); text-transform: uppercase; margin-bottom: 1.5rem; opacity: 0; animation: fadeUp 1s 0.3s forwards; direction: ltr; }
+.case-file-label::before, .case-file-label::after { content: '───'; margin: 0 0.8rem; color: var(--border); }
+.hero-title { font-family: var(--font-display); font-size: clamp(4rem, 10vw, 9rem); font-weight: 800; line-height: 0.9; letter-spacing: -3px; color: var(--text-bright); margin-bottom: 0.5rem; opacity: 0; animation: fadeUp 1s 0.6s forwards; direction: ltr; }
+.hero-title .highlight { background: linear-gradient(135deg, var(--yellow), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero-sub { font-family: var(--font-body); font-size: 0.95rem; letter-spacing: 2px; color: var(--yellow-dim); margin-top: 1rem; opacity: 0; animation: fadeUp 1s 0.9s forwards; font-weight: 500; }
+.hero-tagline { font-family: var(--font-body); font-size: 1.3rem; color: var(--muted); margin-top: 2.5rem; max-width: 550px; margin-left: auto; margin-right: auto; line-height: 1.8; opacity: 0; animation: fadeUp 1s 1.2s forwards; font-weight: 300; }
+.hero-cta { margin-top: 3rem; opacity: 0; animation: fadeUp 1s 1.5s forwards; }
+
+.btn-evidence { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 2.5rem; font-family: var(--font-body); font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; color: var(--black); background: var(--yellow); border: none; cursor: pointer; text-decoration: none; position: relative; overflow: hidden; transition: all 0.4s; }
+.btn-evidence::before { content: ''; position: absolute; inset: 0; background: var(--teal); transform: translateX(101%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.btn-evidence:hover::before { transform: translateX(0); }
+.btn-evidence span { position: relative; z-index: 1; }
+
+.scroll-hint { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; animation: fadeUp 1s 2s forwards; opacity: 0; }
+.scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--yellow), transparent); animation: scrollPulse 2s ease-in-out infinite; }
+@keyframes scrollPulse { 0%, 100% { transform: scaleY(1); opacity: 1; } 50% { transform: scaleY(0.5); opacity: 0.3; } }
+.scroll-hint span { font-family: var(--font-body); font-size: 0.65rem; color: var(--muted); font-weight: 500; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+section { padding: 8rem 2rem; position: relative; }
+.section-label { font-family: var(--font-body); font-size: 0.75rem; letter-spacing: 2px; color: var(--teal); font-weight: 700; margin-bottom: 0.75rem; }
+.section-title { font-family: var(--font-body); font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 800; color: var(--text-bright); line-height: 1.3; }
+.section-divider { width: 60px; height: 2px; background: var(--yellow); margin: 1.5rem 0 2rem; }
+
+.tape-break { width: 100%; height: 28px; background: var(--evidence-stripe); position: relative; overflow: hidden; }
+.tape-break::after { content: 'مسرح جريمة ممنوع الاقتراب   مسرح جريمة ممنوع الاقتراب   مسرح جريمة ممنوع الاقتراب   مسرح جريمة ممنوع الاقتراب   مسرح جريمة ممنوع الاقتراب   مسرح جريمة ممنوع الاقتراب'; position: absolute; white-space: nowrap; font-family: var(--font-body); font-weight: 800; font-size: 0.7rem; color: var(--black); top: 50%; right: 0; transform: translateY(-50%); animation: tapeScroll 20s linear infinite; letter-spacing: 2px; }
+@keyframes tapeScroll { from { transform: translateY(-50%) translateX(0); } to { transform: translateY(-50%) translateX(50%); } }
+
+.team-section { background: var(--deep); }
+.team-section .container { max-width: 1200px; margin: 0 auto; }
+.team-grid-label { font-family: var(--font-body); font-size: 0.7rem; letter-spacing: 2px; color: var(--muted); font-weight: 700; margin-bottom: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; margin-bottom: 4rem; }
+.team-card { background: var(--surface); border: 1px solid var(--border); position: relative; overflow: hidden; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.team-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--yellow); transform: scaleX(0); transform-origin: right; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.team-card:hover::before { transform: scaleX(1); }
+.team-card:hover { border-color: var(--yellow-dim); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 30px var(--yellow-glow); }
+.team-card.supervisor-card::before { background: var(--teal); }
+.team-card.supervisor-card:hover { border-color: var(--teal-dim); box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 30px var(--teal-glow); }
+
+.card-photo { width: 100%; aspect-ratio: 1; background: var(--black); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.card-photo img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; transition: all 0.5s; filter: grayscale(30%); }
+.team-card:hover .card-photo img { opacity: 1; filter: grayscale(0%); transform: scale(1.05); }
+
+.photo-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; color: var(--muted); width: 100%; height: 100%; background: linear-gradient(135deg, var(--surface) 25%, transparent 25%) -10px 0, linear-gradient(225deg, var(--surface) 25%, transparent 25%) -10px 0, linear-gradient(315deg, var(--surface) 25%, transparent 25%), linear-gradient(45deg, var(--surface) 25%, transparent 25%); background-size: 20px 20px; background-color: var(--black); }
+.photo-placeholder svg { opacity: 0.3; }
+.photo-placeholder span { font-family: var(--font-body); font-size: 0.6rem; opacity: 0.4; font-weight: 500; }
+
+.card-id { position: absolute; top: 0.75rem; left: 0.75rem; font-family: var(--font-mono); font-size: 0.55rem; color: var(--yellow); background: rgba(10,10,10,0.85); padding: 0.2rem 0.5rem; letter-spacing: 2px; direction: ltr; }
+.supervisor-card .card-id { color: var(--teal); }
+.card-info { padding: 1.25rem; }
+.card-name { font-family: var(--font-body); font-weight: 700; font-size: 1.05rem; color: var(--text-bright); margin-bottom: 0.3rem; }
+.card-role { font-family: var(--font-body); font-size: 0.7rem; color: var(--yellow-dim); font-weight: 500; }
+.supervisor-card .card-role { color: var(--teal); }
+
+.insight-section { background: var(--black); }
+.insight-section .container { max-width: 1200px; margin: 0 auto; }
+.insight-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+.insight-text p { font-size: 1.1rem; line-height: 2; color: var(--text); margin-bottom: 1.5rem; }
+.insight-text p:first-of-type::first-letter { font-family: var(--font-body); font-weight: 800; font-size: 3.5rem; float: right; line-height: 1; margin-left: 0.5rem; color: var(--yellow); }
+.insight-visual { position: relative; }
+
+.evidence-photo { width: 100%; aspect-ratio: 4/3; background: var(--surface); border: 1px solid var(--border); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.evidence-photo img { width: 100%; height: 100%; object-fit: cover; }
+.evidence-photo .photo-placeholder { aspect-ratio: auto; }
+.evidence-label { position: absolute; bottom: -12px; right: 1.5rem; background: var(--yellow); color: var(--black); font-family: var(--font-body); font-size: 0.7rem; font-weight: 700; padding: 0.4rem 1rem; z-index: 2; }
+.evidence-stamp { position: absolute; top: 1rem; right: 1rem; width: 70px; height: 70px; border: 2px solid var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-body); font-size: 0.55rem; color: var(--red); font-weight: 700; transform: rotate(15deg); opacity: 0.6; text-align: center; line-height: 1.4; }
+
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 2rem; background: var(--border); border: 1px solid var(--border); }
+.stat-cell { background: var(--surface); padding: 1.5rem 1rem; text-align: center; }
+.stat-number { font-family: var(--font-display); font-weight: 800; font-size: 2rem; color: var(--yellow); line-height: 1; direction: ltr; }
+.stat-label { font-family: var(--font-body); font-size: 0.65rem; color: var(--muted); margin-top: 0.5rem; font-weight: 500; }
+
+.features-section { background: var(--deep); }
+.features-section .container { max-width: 1200px; margin: 0 auto; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+.feature-card { background: var(--surface); border: 1px solid var(--border); padding: 2.5rem 2rem; position: relative; overflow: hidden; transition: all 0.4s; }
+.feature-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--yellow), var(--teal)); transform: scaleX(0); transform-origin: right; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.feature-card:hover::after { transform: scaleX(1); }
+.feature-card:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.feature-number { font-family: var(--font-mono); font-size: 0.6rem; color: var(--yellow); letter-spacing: 3px; margin-bottom: 1.5rem; direction: ltr; text-align: right; }
+.feature-icon { width: 48px; height: 48px; margin-bottom: 1.25rem; color: var(--teal); opacity: 0.8; }
+.feature-name { font-family: var(--font-body); font-weight: 700; font-size: 1.2rem; color: var(--text-bright); margin-bottom: 0.75rem; }
+.feature-desc { font-size: 0.95rem; line-height: 1.9; color: var(--muted); }
+
+.gallery-section { background: var(--black); }
+.gallery-section .container { max-width: 1200px; margin: 0 auto; }
+.gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 3rem; }
+.gallery-item { position: relative; border: 1px solid var(--border); overflow: hidden; transition: all 0.4s; }
+.gallery-item:hover { border-color: var(--yellow-dim); box-shadow: 0 0 40px var(--yellow-glow); }
+.gallery-item.wide { grid-column: span 2; }
+.gallery-frame { width: 100%; aspect-ratio: 16/9; background: var(--surface); display: flex; align-items: center; justify-content: center; position: relative; }
+.gallery-frame img { width: 100%; height: 100%; object-fit: cover; }
+.gallery-frame .photo-placeholder span { font-size: 0.6rem; }
+.gallery-caption { padding: 1rem 1.25rem; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.gallery-caption-text { font-family: var(--font-body); font-size: 0.75rem; color: var(--text); font-weight: 700; }
+.gallery-caption-id { font-family: var(--font-mono); font-size: 0.55rem; color: var(--muted); direction: ltr; }
+
+.footer { background: var(--deep); border-top: 1px solid var(--border); padding: 4rem 2rem 2rem; }
+.footer .container { max-width: 1200px; margin: 0 auto; }
+.footer-top { display: flex; justify-content: space-between; align-items: start; margin-bottom: 3rem; flex-wrap: wrap; gap: 2rem; }
+.footer-brand { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; color: var(--text-bright); letter-spacing: -1px; direction: ltr; }
+.footer-brand span { color: var(--yellow); }
+.footer-meta { font-family: var(--font-body); font-size: 0.7rem; color: var(--muted); margin-top: 0.5rem; font-weight: 500; }
+.footer-links { display: flex; gap: 3rem; }
+.footer-col-title { font-family: var(--font-body); font-size: 0.7rem; color: var(--yellow-dim); font-weight: 700; margin-bottom: 1rem; }
+.footer-col a { display: block; font-size: 0.9rem; color: var(--muted); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.3s; }
+.footer-col a:hover { color: var(--teal); }
+.footer-bottom { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.footer-copy { font-family: var(--font-body); font-size: 0.7rem; color: var(--muted); }
+.footer-academy { font-family: var(--font-body); font-size: 0.7rem; color: var(--teal-dim); font-weight: 700; }
+
+.reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+@media (max-width: 900px) {
+  .insight-layout { grid-template-columns: 1fr; gap: 3rem; }
+  .gallery-grid { grid-template-columns: 1fr; }
+  .gallery-item.wide { grid-column: span 1; }
+  .nav-links { display: none; }
+  .footer-top { flex-direction: column; }
+  .footer-links { flex-direction: column; gap: 2rem; }
+}
+@media (max-width: 600px) {
+  .hero-title { letter-spacing: -1px; }
+  .team-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .features-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 1fr; }
+  section { padding: 5rem 1.25rem; }
+}
+
+.cursor-glow { position: fixed; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, var(--yellow-glow) 0%, transparent 70%); pointer-events: none; z-index: 9990; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.4s; }
+body:hover .cursor-glow { opacity: 1; }
+.blink { animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+
+<body>
+<div class="cursor-glow" id="cursorGlow"></div>
+<div class="nav-tape"></div>
+<nav class="nav-bar" id="navBar">
+  <div class="nav-logo">Scene<span>Mind</span></div>
+  <ul class="nav-links">
+    <li><a href="#team">الفريق</a></li>
+    <li><a href="#insight">نظرة عامة</a></li>
+    <li><a href="#features">القدرات</a></li>
+    <li><a href="#gallery">المعرض</a></li>
+  </ul>
+</nav>
+
+<!-- ════════════ HERO ════════════ -->
+<section class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-vignette"></div>
+  <div class="crime-markers">
+    <div class="marker"><svg viewBox="0 0 36 52"><path d="M18 0 L36 12 L36 52 L0 52 L0 12 Z" fill="#e8c84a"/></svg><span>1</span></div>
+    <div class="marker"><svg viewBox="0 0 36 52"><path d="M18 0 L36 12 L36 52 L0 52 L0 12 Z" fill="#e8c84a"/></svg><span>2</span></div>
+    <div class="marker"><svg viewBox="0 0 36 52"><path d="M18 0 L36 12 L36 52 L0 52 L0 12 Z" fill="#e8c84a"/></svg><span>3</span></div>
+    <div class="marker"><svg viewBox="0 0 36 52"><path d="M18 0 L36 12 L36 52 L0 52 L0 12 Z" fill="#e8c84a"/></svg><span>4</span></div>
+    <div class="marker"><svg viewBox="0 0 36 52"><path d="M18 0 L36 12 L36 52 L0 52 L0 12 Z" fill="#e8c84a"/></svg><span>5</span></div>
+  </div>
+  <div class="hero-content">
+    <div class="case-file-label">Case File No. 2026-SM-001</div>
+    <h1 class="hero-title">Scene<span class="highlight">Mind</span></h1>
+    <div class="hero-sub">منصة التحقيق الجنائي الرقمي والاستجابة للحوادث</div>
+    <p class="hero-tagline">"حيث تروي كل بايت قصتها، وكل دليل رقمي يكشف الحقيقة."</p>
+    <div class="hero-cta">
+      <a href="#insight" class="btn-evidence"><span>◂ افتح ملف القضية</span></a>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <span>مرّر للتحقيق</span>
+  </div>
+</section>
+
+<div class="tape-break"></div>
+
+<!-- ════════════ TEAM ════════════ -->
+<section class="team-section" id="team">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">ملف الأفراد</div>
+      <h2 class="section-title">فريق<br>التحقيق</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="team-grid-label reveal">⬡ فريق التحقيق</div>
+    <div class="team-grid">
+      <div class="team-card reveal reveal-delay-1">
+        <div class="card-photo">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+            <span>أضف صورة</span>
+            <img src="./shouq pfp.png">
+          </div>
+          <div class="card-id">AGT-001</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">شوق الثبيتي</div>
+          <div class="card-role">محققة ومطورة</div>
+        </div>
+      </div>
+      <div class="team-card reveal reveal-delay-2">
+        <div class="card-photo">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+            <span>أضف صورة</span>
+            <img src="./rahaf pfp.png">
+          </div>
+          <div class="card-id">AGT-002</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">رهف الشهراني</div>
+          <div class="card-role">محققة ومطورة</div>
+        </div>
+      </div>
+      <div class="team-card reveal reveal-delay-3">
+        <div class="card-photo">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+            <span>أضف صورة</span>
+            <img src="./jumana pfp.png">
+          </div>
+          <div class="card-id">AGT-003</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">جمانة الصبحي</div>
+          <div class="card-role">محققة ومطورة</div>
+        </div>
+      </div>
+    </div>
+    <div class="team-grid-label reveal">⬡ الإشراف</div>
+    <div class="team-grid">
+      <div class="team-card supervisor-card reveal reveal-delay-1">
+        <div class="card-photo">
+          <!-- REPLACE: أضف صورة المشرف -->
+          <!-- <img src="photos/supervisor.jpg" alt="اسم المشرف"> -->
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+            <span>أضف صورة</span>
+          </div>
+          <div class="card-id">SUP-001</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">اسم المشرف</div>
+          <div class="card-role">المشرف</div>
+        </div>
+      </div>
+      <div class="team-card supervisor-card reveal reveal-delay-2">
+        <div class="card-photo">
+          <!-- REPLACE: أضف صورة المشرف المساعد -->
+          <!-- <img src="photos/co-supervisor.jpg" alt="اسم المشرف المساعد"> -->
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+            <span>أضف صورة</span>
+          </div>
+          <div class="card-id">SUP-002</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">اسم المشرف المساعد</div>
+          <div class="card-role">المشرف المساعد</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="tape-break"></div>
+
+<!-- ════════════ INSIGHT ════════════ -->
+<section class="insight-section" id="insight">
+  <div class="container">
+    <div class="insight-layout">
+      <div class="insight-text">
+        <div class="reveal">
+          <div class="section-label">إحاطة القضية</div>
+          <h2 class="section-title">نظرة عامة<br>على المشروع</h2>
+          <div class="section-divider"></div>
+        </div>
+        <div class="reveal reveal-delay-1">
+          <p>سين مايند هي منصة شاملة للتحقيق الجنائي الرقمي والاستجابة للحوادث، صُمّمت لتمكين المحللين والمحققين ومتخصصي الأمن السيبراني بمجموعة أدوات موحّدة. من استخراج بيانات الأجهزة المحمولة إلى تحليل الذاكرة، ومن تحليل الصوت بالذكاء الاصطناعي إلى توليد التقارير التلقائي — تجمع سين مايند كل القدرات الحرجة في بيئة عمل ذكية واحدة.</p>
+        </div>
+        <div class="reveal reveal-delay-2">
+          <p>تربط المنصة بين منهجيات التحقيق التقليدية في مسرح الجريمة وسير العمل الحديثة في الأدلة الرقمية. من خلال توظيف الذكاء الاصطناعي ومعالجة الإشارات المتقدمة والتصوير البصري التفاعلي، تحوّل سين مايند الأدلة الرقمية الخام إلى معلومات استخباراتية قابلة للتنفيذ — محوّلةً البايتات المتفرقة إلى روايات واضحة تصمد في أي تحقيق.</p>
+        </div>
+        <div class="reveal reveal-delay-3">
+          <p>بُنيت بلغة Python وصُمّمت للنشر الفعلي، تمثّل سين مايند الجيل القادم من أدوات الطب الشرعي الرقمي — حيث يلتقي حدس المحقق بالقوة الحاسوبية.</p>
+        </div>
+      </div>
+      <div class="insight-visual">
+        <div class="reveal reveal-delay-2">
+          <div class="evidence-photo">
+            <!-- REPLACE: أضف لقطة شاشة للمشروع -->
+            <!-- <img src="photos/scenemind-overview.jpg" alt="منصة سين مايند"> -->
+            <div class="photo-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <span>لقطة شاشة المشروع</span>
+            </div>
+            <div class="evidence-stamp">دليل<br>المعروض أ</div>
+            <div class="evidence-label">المعروض أ — نظرة عامة على المنصة</div>
+          </div>
+        </div>
+        <div class="stats-row reveal reveal-delay-3">
+          <div class="stat-cell">
+            <div class="stat-number">+8</div>
+            <div class="stat-label">وحدات أساسية</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-number">+100</div>
+            <div class="stat-label">ملف تعريف جهاز</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-number">AI</div>
+            <div class="stat-label">محرك ذكي</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="tape-break"></div>
+
+<!-- ════════════ FEATURES ════════════ -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">تقرير القدرات</div>
+      <h2 class="section-title">ما الذي تقدّمه<br>سين مايند</h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-number">MODULE_01</div>
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+        <div class="feature-name">التحليل الجنائي للأجهزة المحمولة</div>
+        <div class="feature-desc">استخراج وتحليل البيانات من أجهزة أندرويد وiOS وأرشيفات Cellebrite UFDR. تحليل سجلات المكالمات والرسائل وبيانات التطبيقات وإعادة بناء الجداول الزمنية لنشاط المستخدم.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-number">MODULE_02</div>
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div class="feature-name">تحليل الساعات الذكية</div>
+        <div class="feature-desc">تحليل جنائي لبيانات Samsung وApple Watch وHuawei Health مع عرض مسارات GPS واستخراج المقاييس الصحية وإعادة بناء النشاط.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-number">MODULE_03</div>
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        <div class="feature-name">خزنة الصوت</div>
+        <div class="feature-desc">تصوير الطيف الصوتي، تحليل ENF للتحقق من الطوابع الزمنية، كشف التزييف العميق بالذكاء الاصطناعي باستخدام Wav2Vec2، وقدرات فصل المتحدثين.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-number">MODULE_04</div>
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <div class="feature-name">مساعد التحقيق الذكي</div>
+        <div class="feature-desc">روبوت محادثة ذكي مدمج يعمل بتقنية Groq مع حقن السياق RAG-lite، يوفّر تحليلاً ذكياً للقضايا واقتراحات لربط الأدلة.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-number">MODULE_05</div>
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div class="feature-name">توليد التقارير</div>
+        <div class="feature-desc">نظام تصدير تلقائي بصيغتي DOCX وPDF مع أوضاع التقرير التقني الكامل والملخص التنفيذي، جاهز للعرض في قاعات المحاكم وإحاطات أصحاب المصلحة.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-number">MODULE_06</div>
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <div class="feature-name">تحليل الذاكرة والشبكات</div>
+        <div class="feature-desc">تحليل الذاكرة بـ Volatility3، فحص حزم PCAP بـ Scapy، تكامل مع VirusTotal، واكتشاف الأجسام بـ YOLO لمعالجة أدلة الصور.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="tape-break"></div>
+
+<!-- ════════════ GALLERY ════════════ -->
+<section class="gallery-section" id="gallery">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">لوحة الأدلة</div>
+      <h2 class="section-title">معرض<br>المنصة</h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item wide reveal reveal-delay-1">
+        <div class="gallery-frame">
+          <div class="photo-placeholder">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <span>لقطة لوحة التحكم الرئيسية</span>
+          </div>
+        </div>
+        <div class="gallery-caption">
+          <span class="gallery-caption-text">لوحة التحكم الرئيسية</span>
+          <span class="gallery-caption-id">EXH-001</span>
+        </div>
+      </div>
+      <div class="gallery-item reveal reveal-delay-2">
+        <div class="gallery-frame">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+            <span>التحليل الجنائي للمحمول</span>
+          </div>
+        </div>
+        <div class="gallery-caption">
+          <span class="gallery-caption-text">التحليل الجنائي للمحمول</span>
+          <span class="gallery-caption-id">EXH-002</span>
+        </div>
+      </div>
+      <div class="gallery-item reveal reveal-delay-3">
+        <div class="gallery-frame">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            <span>خزنة الصوت</span>
+          </div>
+        </div>
+        <div class="gallery-caption">
+          <span class="gallery-caption-text">خزنة الصوت</span>
+          <span class="gallery-caption-id">EXH-003</span>
+        </div>
+      </div>
+      <div class="gallery-item reveal reveal-delay-2">
+        <div class="gallery-frame">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>المساعد الذكي</span>
+          </div>
+        </div>
+        <div class="gallery-caption">
+          <span class="gallery-caption-text">المساعد الذكي</span>
+          <span class="gallery-caption-id">EXH-004</span>
+        </div>
+      </div>
+      <div class="gallery-item reveal reveal-delay-3">
+        <div class="gallery-frame">
+          <div class="photo-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>تصدير التقارير</span>
+          </div>
+        </div>
+        <div class="gallery-caption">
+          <span class="gallery-caption-text">توليد التقارير</span>
+          <span class="gallery-caption-id">EXH-005</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="tape-break"></div>
+
+<!-- ════════════ FOOTER ════════════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">Scene<span>Mind</span></div>
+        <div class="footer-meta">منصة التحقيق الجنائي الرقمي - الإصدار 1.0</div>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <div class="footer-col-title">التنقّل</div>
+          <a href="#hero">الغلاف</a>
+          <a href="#team">الفريق</a>
+          <a href="#insight">نظرة عامة</a>
+          <a href="#features">القدرات</a>
+          <a href="#gallery">المعرض</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">المنصة</div>
+          <a href="#">GitHub</a>
+          <a href="#">التوثيق</a>
+          <a href="#">تواصل معنا</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">&copy; 2026 SceneMind. جميع الحقوق محفوظة.</div>
+      <div class="footer-academy">أكاديمية طويق — معسكر الأمن السيبراني</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+const navBar = document.getElementById('navBar');
+window.addEventListener('scroll', () => {
+  navBar.classList.toggle('visible', window.scrollY > 400);
+});
+
+const revealEls = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
+}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+revealEls.forEach(el => revealObserver.observe(el));
+
+const glow = document.getElementById('cursorGlow');
+let mouseX = 0, mouseY = 0, glowX = 0, glowY = 0;
+document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+function animateGlow() {
+  glowX += (mouseX - glowX) * 0.08;
+  glowY += (mouseY - glowY) * 0.08;
+  glow.style.left = glowX + 'px';
+  glow.style.top = glowY + 'px';
+  requestAnimationFrame(animateGlow);
+}
+animateGlow();
+
+const caseLabel = document.querySelector('.case-file-label');
+if (caseLabel) {
+  const originalText = caseLabel.textContent;
+  const prefix = '───';
+  const suffix = '───';
+  const mainText = originalText.replace(/───/g, '').trim();
+  caseLabel.textContent = '';
+  caseLabel.style.opacity = '1';
+  setTimeout(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i <= mainText.length) {
+        caseLabel.innerHTML = `${prefix} ${mainText.substring(0, i)}<span class="blink">▊</span> ${suffix}`;
+        i++;
+      } else {
+        caseLabel.innerHTML = `${prefix} ${mainText} ${suffix}`;
+        clearInterval(interval);
+      }
+    }, 60);
+  }, 400);
+}
+</script>
+</body>
+</html>
